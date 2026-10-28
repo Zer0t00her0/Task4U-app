@@ -193,10 +193,11 @@ h1, h2, h3 { text-wrap: balance; }
 .fig .s { font-size: 13px; color: inherit; }
 
 /* kanban */
-.board { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(250px, 420px)); gap: 16px; align-items: start; padding-block: 0 120px; padding-left: var(--gut-l); padding-right: var(--gut-r); overflow-x: auto; }
+.board { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(290px, 420px)); gap: 16px; align-items: start; padding-block: 0 120px; padding-left: var(--gut-l); padding-right: var(--gut-r); overflow-x: auto; }
 .column { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .col-head { display: flex; align-items: center; gap: 10px; padding: 0 8px 0 20px; height: 52px; background: var(--surface); border-radius: var(--r-md); }
-.col-head h3 { margin: 0; font-size: 16px; font-weight: 500; }
+.col-head h3 { margin: 0; font-size: 16px; font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.col-head .dot, .col-head .count { flex: none; }
 .col-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--d, var(--ink-3)); }
 .col-head .count { font-size: 14px; color: var(--ink-3); }
 .col-head .add { margin-left: auto; width: 36px; height: 36px; border-radius: 11px; border: 0; background: var(--bg); color: var(--ink); display: grid; place-items: center; }
@@ -466,7 +467,7 @@ dialog.dialog::backdrop { background: var(--bg); }
 .coltabs[hidden] { display: none !important; }
 
 /* compact cards: one uniform row, ~3-4x smaller than full cards */
-.board.compact { grid-template-columns: repeat(var(--cols, 4), minmax(220px, 340px)); }
+.board.compact { grid-template-columns: repeat(var(--cols, 4), minmax(270px, 340px)); }
 .board.compact .list { gap: 6px; min-height: 48px; }
 .mini {
   display: flex; align-items: center; gap: 10px; width: 100%; height: 52px; padding: 0 12px 0 8px; border: 0; border-radius: 14px;
@@ -1115,7 +1116,7 @@ function renderBoard() {
     const shown = all ? list : list.slice(0, PAGE);
     const empty = filter || query ? `<div class="col-empty" style="cursor:default">Ничего не найдено</div>` : `<button class="col-empty" data-add="${esc(col.id)}">${FINE ? "Перетащи сюда или добавь карточку" : "Добавить карточку"}</button>`;
     return `<section class="column ${col.id === mobileCol ? "active" : ""}" data-col="${esc(col.id)}">
-      <div class="col-head" style="--d:${colDot(i)}"><h3>${esc(col.title)}</h3><span class="dot" aria-hidden="true"></span><span class="count">${list.length}</span>
+      <div class="col-head" style="--d:${colDot(i)}"><h3 title="${esc(col.title)}">${esc(col.title)}</h3><span class="dot" aria-hidden="true"></span><span class="count">${list.length}</span>
         <button class="add" data-add="${esc(col.id)}" aria-label="Добавить карточку в «${esc(col.title)}»">${ICON_PLUS}</button></div>
       <div class="list">${list.length ? shown.map(c => (view === "compact" ? miniHtml : cardHtml)(c, B.meta)).join("") : empty}
         ${list.length > PAGE ? `<button class="more" data-more="${esc(col.id)}">${all ? "Свернуть" : `Показать ещё ${list.length - PAGE}`}</button>` : ""}</div>
