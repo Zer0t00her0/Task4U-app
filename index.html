@@ -101,8 +101,18 @@ h1, h2, h3 { text-wrap: balance; }
 .board-item .menu-wrap { position: static; }
 .boards .n { margin-left: auto; font-size: 12px; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; display: inline-grid; place-items: center; background: var(--human-fill); color: var(--fill-ink); font-weight: 700; }
 .project { background: var(--surface); border-radius: var(--r-lg); }
+.project-top { display: flex; align-items: center; }
+.project-top .project-bar { flex: 1; min-width: 0; }
+.top-acts { display: flex; gap: 6px; padding-right: 14px; flex: none; }
+.ibtn { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--bg); color: var(--ink); display: grid; place-items: center; }
+.ibtn svg { width: 18px; height: 18px; }
+.ibtn:hover { background: var(--navy); color: var(--navy-ink); }
+.ibtn:disabled { color: var(--accent); }
+.ibtn.done { background: var(--accent); color: var(--accent-ink); }
 .project-bar { width: 100%; display: flex; align-items: center; gap: 14px; border: 0; background: none; padding: 16px 20px; text-align: left; border-radius: var(--r-lg); }
-.project-name { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; }
+.project-name { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-hint { white-space: nowrap; }
+@media (max-width: 700px) { .project-hint { display: none; } .project-bar { padding-right: 10px; } .top-acts { padding-right: 12px; } }
 .project-hint { color: var(--ink-3); font-size: 14px; }
 .chev { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; flex: none; }
 .chev svg { width: 18px; height: 18px; }
@@ -529,7 +539,7 @@ dialog.dialog::backdrop { background: var(--bg); }
 .flt:hover { color: var(--ink); }
 .flt[aria-pressed="true"] { background: var(--navy); color: var(--navy-ink); }
 .flt[aria-pressed="true"] b { color: inherit; }
-.search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; background: var(--surface); min-width: 0; flex: 0 1 360px; }
+.search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; background: var(--surface); min-width: 0; flex: 0 1 280px; }
 .search svg { width: 18px; height: 18px; color: var(--ink-3); flex: none; }
 .search input { border: 0; background: none; outline: none; width: 100%; min-width: 0; font-size: 15px; color: var(--ink); }
 .search input::placeholder { color: var(--ink-3); }
@@ -545,8 +555,6 @@ dialog.dialog::backdrop { background: var(--bg); }
   .hello { font-size: 15px; }
   .head-row { flex-wrap: wrap; }
   .head-row .search { flex: 1 1 100%; order: 1; }
-  .head-row #refreshBtn { display: none; }
-  .head-row #wakeBtn { order: 3; }
   .head-row .filters { order: 2; flex: 1 1 100%; }
   .head-row .spacer { display: none; }
   .search { flex: 1 1 auto; }
@@ -984,6 +992,7 @@ const ICON_V_CARDS = `<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="
 const ICON_V_COMPACT = `<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2.6" y="3.4" width="6.6" height="3.2" rx="1.6"/><rect x="2.6" y="8.4" width="6.6" height="3.2" rx="1.6"/><rect x="2.6" y="13.4" width="6.6" height="3.2" rx="1.6"/><rect x="10.8" y="3.4" width="6.6" height="3.2" rx="1.6"/><rect x="10.8" y="8.4" width="6.6" height="3.2" rx="1.6"/></svg>`;
 const ICON_V_LIST = `<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2.6" y="3.4" width="3.2" height="3.2" rx="1.6"/><rect x="2.6" y="8.4" width="3.2" height="3.2" rx="1.6"/><rect x="2.6" y="13.4" width="3.2" height="3.2" rx="1.6"/><rect x="7.6" y="3.4" width="9.8" height="3.2" rx="1.6"/><rect x="7.6" y="8.4" width="9.8" height="3.2" rx="1.6"/><rect x="7.6" y="13.4" width="6.6" height="3.2" rx="1.6"/></svg>`;
 const ICON_BELL = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5V8a4.5 4.5 0 019 0v4.5l1.2 1.5H3.3z"/><path d="M7.3 15.5a1.8 1.8 0 003.4 0"/></svg>`;
+const ICON_REFRESH = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3"/><path d="M15 2.8v3.6h-3.6"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M12.2 12.2L16 16"/></svg>`;
 const PAGE = 30;
 let filter = null;          // claude | gpt | human | none | null
@@ -1031,8 +1040,6 @@ function render() {
         <div class="filters" id="figures" role="group" aria-label="Показать карточки"></div>
         <div class="spacer"></div>
         <div class="views" id="views" role="group" aria-label="Вид карточек"></div>
-        <button class="btn" id="wakeBtn" title="Claude и GPT сразу проверят карточки, где сейчас их ход">${ICON_BELL}<span>Разбудить агентов</span></button>
-        <button class="btn" id="refreshBtn">Обновить</button>
       </div>
     </header>
     <nav class="coltabs" id="coltabs" role="tablist" aria-label="Колонки"></nav>
@@ -1047,11 +1054,17 @@ function projectHtml(B) {
   const open = !!store.get(POPEN, {})[current];
   const d = B.meta.description || "";
   return `<section class="project ${open ? "open" : ""}">
+    <div class="project-top">
     <button class="project-bar" data-ptoggle="1" aria-expanded="${open}" aria-controls="projectBody">
       <span class="project-name">${esc(B.meta.title)}</span>
       <span class="project-hint">${open ? "Скрыть описание" : d ? "Описание проекта" : "Добавить описание проекта"}</span>
       <span class="chev" aria-hidden="true">${ICON_CHEV}</span>
     </button>
+    <div class="top-acts">
+      <button class="ibtn" id="wakeBtn" title="Разбудить агентов: Claude и GPT сразу проверят карточки, где сейчас их ход" aria-label="Разбудить агентов">${ICON_BELL}</button>
+      <button class="ibtn" id="refreshBtn" title="Обновить" aria-label="Обновить">${ICON_REFRESH}</button>
+    </div>
+    </div>
     <div class="project-body" id="projectBody" ${open ? "" : "hidden"}>
       ${d ? `<div class="md">${md(d)}</div>` : `<p class="project-empty">Опиши цель, контекст и ограничения проекта. Агенты читают это описание перед каждой карточкой этой доски.</p>`}
       <button class="btn" data-about="1">${d ? "Изменить описание" : "Написать описание"}</button>
@@ -1200,13 +1213,14 @@ function rowHtml(c, meta) {
 // который сразу будит Claude и GPT — каждый отвечает в карточках, где сейчас его ход.
 async function wakeAgents(btn) {
   if (settings.mode === "demo") { setConn("В демо-режиме агенты не подключены"); return; }
-  const label = btn.querySelector("span"); btn.disabled = true; label.textContent = "Бужу…";
+  btn.disabled = true; setConn("Бужу агентов…");
   try {
     await backend.readJson("wake.json");
     await backend.writeJson("wake.json", { at: new Date().toISOString(), board: current }, "разбудить агентов");
-    label.textContent = "Агенты разбужены"; setConn("Агенты проверят доску в ближайшие минуты", "ok");
-  } catch (e) { label.textContent = "Разбудить агентов"; setConn(e.message, "err"); btn.disabled = false; return; }
-  setTimeout(() => { if (btn.isConnected) { btn.disabled = false; label.textContent = "Разбудить агентов"; } }, 60000);
+    setConn("Агенты разбужены, проверят доску в ближайшие минуты", "ok");
+  } catch (e) { setConn(e.message, "err"); btn.disabled = false; return; }
+  const b = $("#wakeBtn"); if (b) { b.classList.add("done"); }
+  setTimeout(() => { const b = $("#wakeBtn"); if (b) { b.disabled = false; b.classList.remove("done"); } }, 60000);
 }
 
 function getCard() {
