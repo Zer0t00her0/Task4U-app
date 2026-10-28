@@ -75,7 +75,24 @@ h1, h2, h3 { text-wrap: balance; }
   display: flex; flex-direction: column; gap: 32px; min-height: 0;
   padding-block: 28px; padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: 18px;
 }
-.logo { display: flex; flex-direction: column; gap: 2px; padding: 0 12px; }
+.logo { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 4px 0 12px; }
+.side-toggle { width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--ink-3); display: grid; place-items: center; flex: none; }
+.side-toggle svg { width: 20px; height: 20px; }
+.side-toggle:hover { background: var(--bg); color: var(--ink); }
+@media (min-width: 901px) {
+  .app { transition: grid-template-columns .2s; }
+  .app.side-min { grid-template-columns: 84px 1fr; }
+  .side-min .side { padding-left: 14px; padding-right: 14px; }
+  .side-min .logo { padding: 0; justify-content: center; }
+  .side-min .logo b, .side-min .side h2, .side-min .board-btn > span:nth-child(2), .side-min .bdots, .side-min .side .lbl, .side-min .conn span { display: none; }
+  .side-min .side-toggle svg { transform: scaleX(-1); }
+  .side-min .board-btn { position: relative; justify-content: center; padding: 12px 0; }
+  .side-min .board-btn .u, .side-min .board-btn .n { position: absolute; top: 4px; right: 4px; min-width: 18px; height: 18px; padding: 0 5px; font-size: 11px; margin: 0; }
+  .side-min .board-btn .u + .n { display: none; }
+  .side-min .side-foot .btn { justify-content: center; padding: 0; }
+  .side-min .conn { justify-content: center; padding: 0; }
+}
+@media (max-width: 900px) { .side-toggle { display: none; } }
 .logo b { font-weight: 700; font-size: 24px; letter-spacing: -0.035em; line-height: 1.1; }
 .logo b span { color: var(--accent); }
 .logo small { color: var(--ink-3); font-size: 13px; }
@@ -203,7 +220,7 @@ h1, h2, h3 { text-wrap: balance; }
 .fig .s { font-size: 13px; color: inherit; }
 
 /* kanban */
-.board { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(290px, 420px)); gap: 16px; align-items: start; padding-block: 0 120px; padding-left: var(--gut-l); padding-right: var(--gut-r); overflow-x: auto; }
+.board { display: grid; grid-template-columns: repeat(var(--cols, 4), minmax(200px, 1fr)); gap: 16px; align-items: start; padding-block: 0 120px; padding-left: var(--gut-l); padding-right: var(--gut-r); overflow-x: auto; }
 .column { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .col-head { display: flex; align-items: center; gap: 10px; padding: 0 8px 0 20px; height: 52px; background: var(--surface); border-radius: var(--r-md); }
 .col-head h3 { margin: 0; font-size: 16px; font-weight: 500; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -229,7 +246,7 @@ h1, h2, h3 { text-wrap: balance; }
 .card-top .unread { margin-left: auto; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 700; display: inline-grid; place-items: center; flex: none; }
 .card-top .star { display: inline-flex; align-items: center; gap: 6px; }
 .card-top .ic { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); color: var(--ink); display: grid; place-items: center; font-weight: 600; font-size: 14px; flex: none; }
-.card .title { padding-right: 8px; font-size: 22px; font-weight: 500; line-height: 1.15; letter-spacing: -0.025em; }
+.card .title { padding-right: 8px; font-size: 20px; font-weight: 500; line-height: 1.15; letter-spacing: -0.025em; }
 .card-foot { display: flex; align-items: center; gap: 8px; }
 .card-foot .meta { font-size: 13px; color: inherit; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .labels { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -477,7 +494,7 @@ dialog.dialog::backdrop { background: var(--bg); }
 .coltabs[hidden] { display: none !important; }
 
 /* compact cards: one uniform row, ~3-4x smaller than full cards */
-.board.compact { grid-template-columns: repeat(var(--cols, 4), minmax(270px, 340px)); }
+.board.compact { grid-template-columns: repeat(var(--cols, 4), minmax(200px, 1fr)); }
 .board.compact .list { gap: 6px; min-height: 48px; }
 .mini {
   display: flex; align-items: center; gap: 10px; width: 100%; height: 52px; padding: 0 12px 0 8px; border: 0; border-radius: 14px;
@@ -539,8 +556,10 @@ dialog.dialog::backdrop { background: var(--bg); }
 .flt:hover { color: var(--ink); }
 .flt[aria-pressed="true"] { background: var(--navy); color: var(--navy-ink); }
 .flt[aria-pressed="true"] b { color: inherit; }
-.flt.arch { margin-left: 10px; padding: 0 14px; }
-.flt.arch svg { width: 17px; height: 17px; }
+.col-head svg, .rhead svg { width: 18px; height: 18px; color: var(--ink-3); flex: none; }
+.column.arch .col-head { background: none; outline: 1.5px solid var(--line); outline-offset: -1.5px; }
+.column.arch .mini { background: var(--surface); color: var(--ink); }
+.column.arch .mini .ic { background: var(--bg); }
 .views[hidden] { display: none; }
 .search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; background: var(--surface); min-width: 0; flex: 0 1 240px; }
 .search svg { width: 18px; height: 18px; color: var(--ink-3); flex: none; }
@@ -581,9 +600,9 @@ dialog.dialog::backdrop { background: var(--bg); }
 </style>
 </head>
 <body>
-<div class="app">
+<div class="app" id="app">
   <aside class="side">
-    <div class="logo"><b>Task<span>4U</span></b></div>
+    <div class="logo"><b>Task<span>4U</span></b><button class="side-toggle" id="sideToggle" aria-label="Свернуть меню" title="Свернуть меню"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="13" height="12" rx="2.5"/><path d="M7 3v12M11.8 7.2L10 9l1.8 1.8"/></svg></button></div>
     <div>
       <h2>Доски</h2>
       <nav class="boards" id="boards" aria-label="Доски"></nav>
@@ -1000,7 +1019,6 @@ const ICON_BOX = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" st
 const ICON_SEARCH = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M12.2 12.2L16 16"/></svg>`;
 const PAGE = 30;
 let filter = null;          // claude | gpt | human | none | null
-let archiveMode = false;   // показываем архив вместо доски
 const VIEWKEY = "ochered.view";
 let view = store.get(VIEWKEY, "cards"); // cards | compact | list
 let query = "";
@@ -1087,48 +1105,50 @@ function matches(c) {
   return true;
 }
 
+const ARCH = "__archive"; // виртуальная колонка «Архив»: карточки с archived: true
 function renderBoard() {
   const B = state.boards[current]; if (!B) return;
-  const cols = B.meta.columns || [];
+  const own = B.meta.columns || [];
+  // У доски может быть своя колонка archive (как в «Поиске работы») — тогда виртуальную не добавляем.
+  const hasOwnArchive = own.some(c => c.id === "archive");
+  const cols = hasOwnArchive ? own : [...own, { id: ARCH, title: "Архив", virtual: true }];
   const archived = B.cards.filter(c => c.archived);
-  const cards = archiveMode ? archived : B.cards.filter(c => !c.archived);
+  const cards = B.cards.filter(c => !c.archived);
   const cnt = w => cards.filter(c => w === "none" ? (c.turn === "none" || !c.turn) : c.turn === w).length;
-  const colDot = i => ["var(--human-dot)", "var(--gpt-dot)", "var(--accent)", "var(--claude-dot)"][i] || "var(--ink-3)";
-  const kart = n => plural(n, "карточка", "карточки", "карточек");
+  const colDot = (col, i) => col.virtual ? "var(--ink-3)" : ["var(--human-dot)", "var(--gpt-dot)", "var(--accent)", "var(--claude-dot)"][i] || "var(--ink-3)";
 
   $("#figures").innerHTML = `<button class="flt" data-filter="all" aria-pressed="${!filter}">Все <b>${cards.length}</b></button>` +
     [["human", "Ждут меня"], ["claude", "Claude"], ["gpt", "GPT"], ["none", "Закрыто"]].map(([w, label]) =>
-      `<button class="flt ${whoClass(w)}" data-filter="${w}" aria-pressed="${filter === w}"><i aria-hidden="true"></i>${label} <b>${cnt(w)}</b></button>`).join("") +
-    `<button class="flt arch" data-archive="1" aria-pressed="${archiveMode}" title="${archiveMode ? "Вернуться к доске" : "Архив — отработанные карточки"}" aria-label="Архив">${ICON_BOX}${archiveMode ? "Архив " : ""}<b>${archived.length}</b></button>`;
+      `<button class="flt ${whoClass(w)}" data-filter="${w}" aria-pressed="${filter === w}"><i aria-hidden="true"></i>${label} <b>${cnt(w)}</b></button>`).join("");
   $("#boardArea").style.setProperty("--cols", cols.length || 1);
-  $("#views").hidden = archiveMode;
   $("#views").innerHTML = [["cards", "Крупные карточки", ICON_V_CARDS], ["compact", "Компактные карточки", ICON_V_COMPACT], ["list", "Списком", ICON_V_LIST]]
     .map(([v, n, ic]) => `<button data-view="${v}" aria-pressed="${view === v}" title="${n}" aria-label="${n}">${ic}</button>`).join("");
-  const asList = view === "list" || archiveMode;
-  $("#boardArea").className = "board" + (view === "compact" && !archiveMode ? " compact" : asList ? " as-list" : "");
+  const asList = view === "list";
+  $("#boardArea").className = "board" + (view === "compact" ? " compact" : asList ? " as-list" : "");
   $("#coltabs").hidden = asList;
 
   const visible = cards.filter(matches);
-  const byCol = id => visible.filter(c => c.column === id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const visArch = archived.filter(matches);
+  const byCol = id => (id === ARCH ? visArch : visible.filter(c => c.column === id)).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   if (!mobileCol || !cols.some(c => c.id === mobileCol) || (!byCol(mobileCol).length && visible.length)) mobileCol = (cols.find(c => byCol(c.id).length) || cols[0])?.id;
 
   $("#coltabs").innerHTML = cols.map(col => `<button role="tab" data-coltab="${esc(col.id)}" aria-selected="${col.id === mobileCol}">${esc(col.title)} <b>${byCol(col.id).length}</b></button>`).join("");
 
   const note = filter || query
     ? `<div class="filter-note" style="padding:0 0 4px">Показано ${visible.length} из ${cards.length} ${plural(cards.length, "карточки", "карточек", "карточек")}<button data-clear="1">Сбросить фильтр</button></div>` : "";
+  const addBtn = col => col.virtual ? "" : `<button class="add" data-add="${esc(col.id)}" aria-label="Добавить карточку в «${esc(col.title)}»">${ICON_PLUS}</button>`;
+  const more = (col, list, all) => list.length > PAGE ? `<button class="more" data-more="${esc(col.id)}">${all ? "Свернуть" : `Показать ещё ${list.length - PAGE}`}</button>` : "";
 
   if (asList) {
-    const colName = Object.fromEntries(cols.map(c => [c.id, c.title]));
     $("#boardArea").innerHTML = note + `<div class="rows">` + cols.map((col, i) => {
       const list = byCol(col.id); if (!list.length) return "";
       const all = showAll.has(col.id), shown = all ? list : list.slice(0, PAGE);
-      return `<section class="rgroup" data-col="${esc(col.id)}">
-        <div class="rhead" style="--d:${colDot(i)}"><span class="dot" aria-hidden="true"></span><h3>${esc(col.title)}</h3><span class="count">${list.length}</span>
-          ${archiveMode ? "" : `<button class="add" data-add="${esc(col.id)}" aria-label="Добавить карточку в «${esc(col.title)}»">${ICON_PLUS}</button>`}</div>
+      return `<section class="rgroup ${col.virtual ? "arch" : ""}" data-col="${esc(col.id)}">
+        <div class="rhead" style="--d:${colDot(col, i)}">${col.virtual ? ICON_BOX : `<span class="dot" aria-hidden="true"></span>`}<h3>${esc(col.title)}</h3><span class="count">${list.length}</span>${addBtn(col)}</div>
         ${shown.map(c => rowHtml(c, B.meta)).join("")}
-        ${list.length > PAGE ? `<button class="more" data-more="${esc(col.id)}">${all ? "Свернуть" : `Показать ещё ${list.length - PAGE}`}</button>` : ""}
+        ${more(col, list, all)}
       </section>`;
-    }).join("") + (visible.length ? "" : `<div class="col-empty" style="cursor:default">${filter || query ? "Ничего не найдено" : archiveMode ? "В архиве пока пусто. Отработанную карточку можно отправить сюда через меню «⋯» в карточке." : "Карточек пока нет"}</div>`) + `</div>`;
+    }).join("") + (visible.length || visArch.length ? "" : `<div class="col-empty" style="cursor:default">${filter || query ? "Ничего не найдено" : "Карточек пока нет"}</div>`) + `</div>`;
     return;
   }
 
@@ -1136,12 +1156,15 @@ function renderBoard() {
     const list = byCol(col.id);
     const all = showAll.has(col.id);
     const shown = all ? list : list.slice(0, PAGE);
-    const empty = filter || query ? `<div class="col-empty" style="cursor:default">Ничего не найдено</div>` : `<button class="col-empty" data-add="${esc(col.id)}">${FINE ? "Перетащи сюда или добавь карточку" : "Добавить карточку"}</button>`;
-    return `<section class="column ${col.id === mobileCol ? "active" : ""}" data-col="${esc(col.id)}">
-      <div class="col-head" style="--d:${colDot(i)}"><h3 title="${esc(col.title)}">${esc(col.title)}</h3><span class="dot" aria-hidden="true"></span><span class="count">${list.length}</span>
-        <button class="add" data-add="${esc(col.id)}" aria-label="Добавить карточку в «${esc(col.title)}»">${ICON_PLUS}</button></div>
-      <div class="list">${list.length ? shown.map(c => (view === "compact" ? miniHtml : cardHtml)(c, B.meta)).join("") : empty}
-        ${list.length > PAGE ? `<button class="more" data-more="${esc(col.id)}">${all ? "Свернуть" : `Показать ещё ${list.length - PAGE}`}</button>` : ""}</div>
+    const empty = filter || query ? `<div class="col-empty" style="cursor:default">Ничего не найдено</div>`
+      : col.virtual ? `<div class="col-empty" style="cursor:default">${FINE ? "Перетащи сюда отработанную карточку" : "Отработанные карточки: меню «⋯» → «В архив»"}</div>`
+      : `<button class="col-empty" data-add="${esc(col.id)}">${FINE ? "Перетащи сюда или добавь карточку" : "Добавить карточку"}</button>`;
+    // В архиве карточки всегда компактные — это справка, а не работа.
+    const render = col.virtual || view === "compact" ? miniHtml : cardHtml;
+    return `<section class="column ${col.virtual ? "arch" : ""} ${col.id === mobileCol ? "active" : ""}" data-col="${esc(col.id)}">
+      <div class="col-head" style="--d:${colDot(col, i)}">${col.virtual ? ICON_BOX : ""}<h3 title="${esc(col.title)}">${esc(col.title)}</h3>${col.virtual ? "" : `<span class="dot" aria-hidden="true"></span>`}<span class="count">${list.length}</span>${addBtn(col)}</div>
+      <div class="list">${list.length ? shown.map(c => render(c, B.meta)).join("") : empty}
+        ${more(col, list, all)}</div>
     </section>`;
   }).join("");
 }
@@ -1396,17 +1419,19 @@ async function sendMessage(pass = false) {
 
 async function moveCard(board, id, col, beforeId) {
   const B = state.boards[board]; const c = B.cards.find(x => x.id === id); if (!c) return;
-  const list = B.cards.filter(x => x.column === col && x.id !== id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  if (col === ARCH) { if (c.archived) return; c.archived = true; render(); return saveCard(c, `${c.title}: в архив`, board); }
+  const wasArchived = !!c.archived; c.archived = false;
+  const list = B.cards.filter(x => !x.archived && x.column === col && x.id !== id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   const idx = beforeId ? list.findIndex(x => x.id === beforeId) : list.length;
   let order;
   if (!list.length) order = 1;
   else if (idx <= 0) order = (list[0].order ?? 0) - 1;
   else if (idx >= list.length) order = (list.at(-1).order ?? 0) + 1;
   else order = ((list[idx - 1].order ?? 0) + (list[idx].order ?? 0)) / 2;
-  if (c.column === col && c.order === order) return;
+  if (!wasArchived && c.column === col && c.order === order) return;
   c.column = col; c.order = order;
   render();
-  await saveCard(c, `${c.title}: колонка → ${col}`, board);
+  await saveCard(c, wasArchived ? `${c.title}: из архива → ${col}` : `${c.title}: колонка → ${col}`, board);
 }
 
 async function createCard(form) {
@@ -1495,13 +1520,12 @@ document.addEventListener("click", async e => {
     } catch (err) { setConn(err.message, "err"); }
     busy = false; await reload(); return;
   }
-  if (t.dataset.board) { filter = null; query = ""; mobileCol = null; archiveMode = false; current = t.dataset.board; store.set("ochered.board", current); closeSheet(); render(); return; }
+  if (t.dataset.board) { filter = null; query = ""; mobileCol = null; current = t.dataset.board; store.set("ochered.board", current); closeSheet(); render(); return; }
   if (t.dataset.card && Date.now() - justDragged < 400) return;
   if (t.dataset.card) { editing = null; openCard = { board: current, id: t.dataset.card }; tab = "thread"; renderSheet(); return; }
   if (t.dataset.color) { const cid = t.closest("[data-cid]")?.dataset.cid; const cc = cid ? state.boards[current]?.cards.find(x => x.id === cid) : getCard(); hidePal(); if (!cc) return; const v = t.dataset.color === "auto" ? "" : t.dataset.color; if ((cc.color || "") === v) return; if (v) cc.color = v; else delete cc.color; saveCard(cc, `${cc.title}: цвет`, cid ? current : undefined); return; }
   if (t.dataset.closesheet) { closeSheet(); return; }
   if (t.dataset.edit) { if (Date.now() - lastBlur < 300) return; editing = editing === t.dataset.edit ? null : t.dataset.edit; renderSheet(); setTimeout(() => $(editing === "desc" ? "#cDesc" : "#cReport")?.focus(), 0); return; }
-  if (t.dataset.archive) { archiveMode = !archiveMode; filter = null; renderBoard(); return; }
   if (t.dataset.view) { view = t.dataset.view; store.set(VIEWKEY, view); renderBoard(); return; }
   if (t.dataset.filter) { filter = t.dataset.filter === "all" || filter === t.dataset.filter ? null : t.dataset.filter; renderBoard(); return; }
   if (t.dataset.clear) { filter = null; query = ""; const q = $("#q"); if (q) q.value = ""; renderBoard(); return; }
@@ -1540,6 +1564,7 @@ document.addEventListener("click", async e => {
     case "refreshBtn": reload(); break;
     case "wakeBtn": wakeAgents(t); break;
     case "qrBtn": showQr(); break;
+    case "sideToggle": setSideMin(!$("#app").classList.contains("side-min")); break;
     case "pwBtn": savePassword(); break;
     case "linkBtn":
       try { await navigator.clipboard.writeText(connectLink()); t.textContent = "Скопировано"; }
@@ -1714,6 +1739,11 @@ if (!settings.owner && location.hostname.endsWith(".github.io")) {
 }
 
 
+function setSideMin(on) {
+  $("#app").classList.toggle("side-min", on); store.set("ochered.sideMin", on);
+  const b = $("#sideToggle"); const l = on ? "Развернуть меню" : "Свернуть меню"; b.title = l; b.setAttribute("aria-label", l);
+}
+setSideMin(!!store.get("ochered.sideMin", false));
 connect();
 </script>
 </body>
