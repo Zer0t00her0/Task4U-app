@@ -539,7 +539,10 @@ dialog.dialog::backdrop { background: var(--bg); }
 .flt:hover { color: var(--ink); }
 .flt[aria-pressed="true"] { background: var(--navy); color: var(--navy-ink); }
 .flt[aria-pressed="true"] b { color: inherit; }
-.search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; background: var(--surface); min-width: 0; flex: 0 1 280px; }
+.flt.arch { margin-left: 10px; padding: 0 14px; }
+.flt.arch svg { width: 17px; height: 17px; }
+.views[hidden] { display: none; }
+.search { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; background: var(--surface); min-width: 0; flex: 0 1 240px; }
 .search svg { width: 18px; height: 18px; color: var(--ink-3); flex: none; }
 .search input { border: 0; background: none; outline: none; width: 100%; min-width: 0; font-size: 15px; color: var(--ink); }
 .search input::placeholder { color: var(--ink-3); }
@@ -993,9 +996,11 @@ const ICON_V_COMPACT = `<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden
 const ICON_V_LIST = `<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="2.6" y="3.4" width="3.2" height="3.2" rx="1.6"/><rect x="2.6" y="8.4" width="3.2" height="3.2" rx="1.6"/><rect x="2.6" y="13.4" width="3.2" height="3.2" rx="1.6"/><rect x="7.6" y="3.4" width="9.8" height="3.2" rx="1.6"/><rect x="7.6" y="8.4" width="9.8" height="3.2" rx="1.6"/><rect x="7.6" y="13.4" width="6.6" height="3.2" rx="1.6"/></svg>`;
 const ICON_BELL = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5V8a4.5 4.5 0 019 0v4.5l1.2 1.5H3.3z"/><path d="M7.3 15.5a1.8 1.8 0 003.4 0"/></svg>`;
 const ICON_REFRESH = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3"/><path d="M15 2.8v3.6h-3.6"/></svg>`;
+const ICON_BOX = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="13" height="3.5" rx="1"/><path d="M3.8 6.5v7.2a1 1 0 001 1h8.4a1 1 0 001-1V6.5M7.2 9.5h3.6"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M12.2 12.2L16 16"/></svg>`;
 const PAGE = 30;
 let filter = null;          // claude | gpt | human | none | null
+let archiveMode = false;   // показываем архив вместо доски
 const VIEWKEY = "ochered.view";
 let view = store.get(VIEWKEY, "cards"); // cards | compact | list
 let query = "";
@@ -1004,8 +1009,8 @@ const showAll = new Set();
 const FINE = window.matchMedia ? matchMedia("(pointer: fine)").matches : true;
 
 function render() {
-  const waiting = id => state.boards[id]?.cards.filter(c => c.turn === "human").length || 0;
-  const unread = id => (state.boards[id]?.cards || []).reduce((s, c) => s + newCount(c, id), 0);
+  const waiting = id => state.boards[id]?.cards.filter(c => !c.archived && c.turn === "human").length || 0;
+  const unread = id => (state.boards[id]?.cards || []).filter(c => !c.archived).reduce((s, c) => s + newCount(c, id), 0);
   let totalUnread = 0;
   $("#boards").innerHTML = state.index.map(b => {
     const n = waiting(b.id), u = unread(b.id); totalUnread += u;
@@ -1085,19 +1090,23 @@ function matches(c) {
 function renderBoard() {
   const B = state.boards[current]; if (!B) return;
   const cols = B.meta.columns || [];
-  const cards = B.cards;
+  const archived = B.cards.filter(c => c.archived);
+  const cards = archiveMode ? archived : B.cards.filter(c => !c.archived);
   const cnt = w => cards.filter(c => w === "none" ? (c.turn === "none" || !c.turn) : c.turn === w).length;
   const colDot = i => ["var(--human-dot)", "var(--gpt-dot)", "var(--accent)", "var(--claude-dot)"][i] || "var(--ink-3)";
   const kart = n => plural(n, "карточка", "карточки", "карточек");
 
   $("#figures").innerHTML = `<button class="flt" data-filter="all" aria-pressed="${!filter}">Все <b>${cards.length}</b></button>` +
     [["human", "Ждут меня"], ["claude", "Claude"], ["gpt", "GPT"], ["none", "Закрыто"]].map(([w, label]) =>
-      `<button class="flt ${whoClass(w)}" data-filter="${w}" aria-pressed="${filter === w}"><i aria-hidden="true"></i>${label} <b>${cnt(w)}</b></button>`).join("");
+      `<button class="flt ${whoClass(w)}" data-filter="${w}" aria-pressed="${filter === w}"><i aria-hidden="true"></i>${label} <b>${cnt(w)}</b></button>`).join("") +
+    `<button class="flt arch" data-archive="1" aria-pressed="${archiveMode}" title="${archiveMode ? "Вернуться к доске" : "Архив — отработанные карточки"}" aria-label="Архив">${ICON_BOX}${archiveMode ? "Архив " : ""}<b>${archived.length}</b></button>`;
   $("#boardArea").style.setProperty("--cols", cols.length || 1);
+  $("#views").hidden = archiveMode;
   $("#views").innerHTML = [["cards", "Крупные карточки", ICON_V_CARDS], ["compact", "Компактные карточки", ICON_V_COMPACT], ["list", "Списком", ICON_V_LIST]]
     .map(([v, n, ic]) => `<button data-view="${v}" aria-pressed="${view === v}" title="${n}" aria-label="${n}">${ic}</button>`).join("");
-  $("#boardArea").className = "board" + (view === "compact" ? " compact" : view === "list" ? " as-list" : "");
-  $("#coltabs").hidden = view === "list";
+  const asList = view === "list" || archiveMode;
+  $("#boardArea").className = "board" + (view === "compact" && !archiveMode ? " compact" : asList ? " as-list" : "");
+  $("#coltabs").hidden = asList;
 
   const visible = cards.filter(matches);
   const byCol = id => visible.filter(c => c.column === id).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
@@ -1108,18 +1117,18 @@ function renderBoard() {
   const note = filter || query
     ? `<div class="filter-note" style="padding:0 0 4px">Показано ${visible.length} из ${cards.length} ${plural(cards.length, "карточки", "карточек", "карточек")}<button data-clear="1">Сбросить фильтр</button></div>` : "";
 
-  if (view === "list") {
+  if (asList) {
     const colName = Object.fromEntries(cols.map(c => [c.id, c.title]));
     $("#boardArea").innerHTML = note + `<div class="rows">` + cols.map((col, i) => {
       const list = byCol(col.id); if (!list.length) return "";
       const all = showAll.has(col.id), shown = all ? list : list.slice(0, PAGE);
       return `<section class="rgroup" data-col="${esc(col.id)}">
         <div class="rhead" style="--d:${colDot(i)}"><span class="dot" aria-hidden="true"></span><h3>${esc(col.title)}</h3><span class="count">${list.length}</span>
-          <button class="add" data-add="${esc(col.id)}" aria-label="Добавить карточку в «${esc(col.title)}»">${ICON_PLUS}</button></div>
+          ${archiveMode ? "" : `<button class="add" data-add="${esc(col.id)}" aria-label="Добавить карточку в «${esc(col.title)}»">${ICON_PLUS}</button>`}</div>
         ${shown.map(c => rowHtml(c, B.meta)).join("")}
         ${list.length > PAGE ? `<button class="more" data-more="${esc(col.id)}">${all ? "Свернуть" : `Показать ещё ${list.length - PAGE}`}</button>` : ""}
       </section>`;
-    }).join("") + (visible.length ? "" : `<div class="col-empty" style="cursor:default">${filter || query ? "Ничего не найдено" : "Карточек пока нет"}</div>`) + `</div>`;
+    }).join("") + (visible.length ? "" : `<div class="col-empty" style="cursor:default">${filter || query ? "Ничего не найдено" : archiveMode ? "В архиве пока пусто. Отработанную карточку можно отправить сюда через меню «⋯» в карточке." : "Карточек пока нет"}</div>`) + `</div>`;
     return;
   }
 
@@ -1295,6 +1304,7 @@ function renderSheet() {
           <div class="menu-wrap">
             <button class="round" id="cMenuBtn" aria-label="Действия с карточкой" aria-haspopup="menu" aria-expanded="false">${ICON_DOTS}</button>
             <div class="menu" id="cMenu" role="menu" hidden>
+              <button class="menu-item" id="cArchive" role="menuitem">${ICON_BOX}<span>${c.archived ? "Вернуть из архива" : "В архив"}</span></button>
               <button class="menu-item danger" id="cDeleteTop" role="menuitem">${ICON_TRASH}<span>Удалить карточку</span></button>
             </div>
           </div>
@@ -1485,12 +1495,13 @@ document.addEventListener("click", async e => {
     } catch (err) { setConn(err.message, "err"); }
     busy = false; await reload(); return;
   }
-  if (t.dataset.board) { filter = null; query = ""; mobileCol = null; current = t.dataset.board; store.set("ochered.board", current); closeSheet(); render(); return; }
+  if (t.dataset.board) { filter = null; query = ""; mobileCol = null; archiveMode = false; current = t.dataset.board; store.set("ochered.board", current); closeSheet(); render(); return; }
   if (t.dataset.card && Date.now() - justDragged < 400) return;
   if (t.dataset.card) { editing = null; openCard = { board: current, id: t.dataset.card }; tab = "thread"; renderSheet(); return; }
   if (t.dataset.color) { const cid = t.closest("[data-cid]")?.dataset.cid; const cc = cid ? state.boards[current]?.cards.find(x => x.id === cid) : getCard(); hidePal(); if (!cc) return; const v = t.dataset.color === "auto" ? "" : t.dataset.color; if ((cc.color || "") === v) return; if (v) cc.color = v; else delete cc.color; saveCard(cc, `${cc.title}: цвет`, cid ? current : undefined); return; }
   if (t.dataset.closesheet) { closeSheet(); return; }
   if (t.dataset.edit) { if (Date.now() - lastBlur < 300) return; editing = editing === t.dataset.edit ? null : t.dataset.edit; renderSheet(); setTimeout(() => $(editing === "desc" ? "#cDesc" : "#cReport")?.focus(), 0); return; }
+  if (t.dataset.archive) { archiveMode = !archiveMode; filter = null; renderBoard(); return; }
   if (t.dataset.view) { view = t.dataset.view; store.set(VIEWKEY, view); renderBoard(); return; }
   if (t.dataset.filter) { filter = t.dataset.filter === "all" || filter === t.dataset.filter ? null : t.dataset.filter; renderBoard(); return; }
   if (t.dataset.clear) { filter = null; query = ""; const q = $("#q"); if (q) q.value = ""; renderBoard(); return; }
@@ -1502,6 +1513,9 @@ document.addEventListener("click", async e => {
   const c = getCard();
   switch (t.id) {
     case "closeSheet": closeSheet(); break;
+    case "cArchive":
+      c.archived = !c.archived;
+      { const ob = openCard.board; closeSheet(); saveCard(c, c.archived ? `${c.title}: в архив` : `${c.title}: из архива`, ob); } break;
     case "cSend": sendMessage(false); break;
     case "cPass": sendMessage(true); break;
     case "cSaveDesc": c.description = $("#cDesc").value; editing = null; await saveCard(c, `${c.title}: задача`); break;
