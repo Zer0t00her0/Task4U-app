@@ -1410,7 +1410,12 @@ function renderSheet() {
   if (sameCard) { const mm = sheet.querySelector(".m-main"); if (mm) mm.scrollTop = keepMain; if (draft) $("#cMsg").value = draft; }
 }
 
-function closeSheet() { delete $("#sheet").dataset.card; editing = null; openCard = null; $("#sheet").hidden = true; $("#sheet").innerHTML = ""; }
+function closeSheet() {
+  const wasOpen = !!openCard;
+  delete $("#sheet").dataset.card; editing = null; openCard = null; $("#sheet").hidden = true; $("#sheet").innerHTML = "";
+  // Карточка прочитана — сразу убираем её значок новых ответов с доски, из меню досок и вкладки.
+  if (wasOpen && state.boards?.[current]) render();
+}
 
 /* ------------------------------------------------------------------ mutations */
 // Изменения видны сразу, запись в репозиторий идёт в фоне по очереди.
