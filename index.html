@@ -146,8 +146,10 @@ h1, h2, h3 { text-wrap: balance; }
   .project-top .project-name { display: none; }
 }
 .project-top .project-bar { flex: 1; min-width: 0; }
-.top-acts { display: flex; gap: 6px; padding-right: 14px; flex: none; }
-.project-top .project-bar { padding-right: 6px; }
+.head-top { display: flex; gap: 10px; align-items: flex-start; }
+.head-top .project { flex: 1; min-width: 0; }
+.top-acts { display: flex; align-items: center; gap: 6px; flex: none; height: 68px; padding: 0 14px; border-radius: var(--r-lg); background: var(--surface); }
+.project-top .project-bar { padding-right: 14px; }
 .top-acts .menu { min-width: 200px; }
 .ibtn { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--bg); color: var(--ink); display: grid; place-items: center; }
 .ibtn svg { width: 18px; height: 18px; }
@@ -157,7 +159,7 @@ h1, h2, h3 { text-wrap: balance; }
 .project-bar { width: 100%; display: flex; align-items: center; gap: 14px; border: 0; background: none; padding: 16px 20px; text-align: left; border-radius: var(--r-lg); }
 .project-name { font-weight: 600; font-size: 18px; letter-spacing: -0.02em; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .project-hint { white-space: nowrap; }
-@media (max-width: 700px) { .project-hint { display: none; } .project-bar { padding-right: 10px; } .top-acts { padding-right: 12px; } }
+@media (max-width: 700px) { .project-hint { display: none; } .project-bar { padding-right: 10px; } .top-acts { padding: 0 10px; gap: 4px; } .head-top { gap: 8px; } }
 .project-hint { color: var(--ink-3); font-size: 14px; }
 .chev { margin-left: auto; width: 36px; height: 36px; border-radius: 50%; background: var(--bg); display: grid; place-items: center; flex: none; }
 .chev svg { width: 18px; height: 18px; }
@@ -1120,13 +1122,19 @@ function projectHtml(B) {
   const d = B.meta.description || "";
   const boardsSel = `<label class="bswitch"><span class="bname">${esc(B.meta.title)}<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2.5L6 0.8 9 2.5M3 9.5L6 11.2 9 9.5"/></svg></span><select id="boardSel" aria-label="Выбрать доску">${state.index.map(b =>
     `<option value="${esc(b.id)}" ${b.id === current ? "selected" : ""}>${esc(b.title)}${(n => n ? ` · новых ответов: ${n}` : "")((state.boards[b.id]?.cards || []).filter(c => !c.archived).reduce((s, c) => s + newCount(c, b.id), 0))}</option>`).join("")}</select></label>`;
-  return `<section class="project ${open ? "open" : ""}">
+  return `<div class="head-top"><section class="project ${open ? "open" : ""}">
     <div class="project-top">${boardsSel}
     <button class="project-bar" data-ptoggle="1" aria-expanded="${open}" aria-controls="projectBody">
       <span class="project-name">${esc(B.meta.title)}</span>
       <span class="project-hint">${open ? "Скрыть описание" : d ? "Описание проекта" : "Добавить описание проекта"}</span>
       <span class="chev" aria-hidden="true">${ICON_CHEV}</span>
     </button>
+    </div>
+    <div class="project-body" id="projectBody" ${open ? "" : "hidden"}>
+      ${d ? `<div class="md">${md(d)}</div>` : `<p class="project-empty">Опиши цель, контекст и ограничения проекта. Агенты читают это описание перед каждой карточкой этой доски.</p>`}
+      <button class="btn" data-about="1">${d ? "Изменить описание" : "Написать описание"}</button>
+    </div>
+  </section>
     <div class="top-acts">
       <button class="ibtn" id="notifBtn" title="Уведомления" aria-label="Уведомления">${ICON_BELL}</button>
       <button class="ibtn" id="refreshBtn" title="Обновить" aria-label="Обновить">${ICON_REFRESH}</button>
@@ -1137,12 +1145,7 @@ function projectHtml(B) {
         </div>
       </div>
     </div>
-    </div>
-    <div class="project-body" id="projectBody" ${open ? "" : "hidden"}>
-      ${d ? `<div class="md">${md(d)}</div>` : `<p class="project-empty">Опиши цель, контекст и ограничения проекта. Агенты читают это описание перед каждой карточкой этой доски.</p>`}
-      <button class="btn" data-about="1">${d ? "Изменить описание" : "Написать описание"}</button>
-    </div>
-  </section>`;
+  </div>`;
 }
 
 function matches(c) {
