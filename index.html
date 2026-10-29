@@ -125,7 +125,26 @@ h1, h2, h3 { text-wrap: balance; }
 .board-item .menu-wrap { position: static; }
 .boards .n { margin-left: auto; font-size: 12px; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; display: inline-grid; place-items: center; background: var(--human-fill); color: var(--fill-ink); font-weight: 700; }
 .project { background: var(--surface); border-radius: var(--r-lg); }
-.project-top { display: flex; align-items: center; }
+.project-top { display: flex; align-items: center; min-width: 0; }
+.bswitch { display: none; }
+.pw { position: relative; display: block; min-width: 0; }
+.login .pw { flex: 1; }
+.pw input { width: 100%; padding-right: 48px !important; box-sizing: border-box; }
+.eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; color: var(--ink-3); display: grid; place-items: center; }
+.eye svg { width: 20px; height: 20px; }
+.eye:hover { color: var(--ink); }
+@media (max-width: 900px) {
+  html, body { overflow-x: hidden; max-width: 100%; }
+  .side .boards, .side > div:has(> .boards) { display: none; }
+  .side { overflow: hidden; }
+  .bswitch { display: block; position: relative; flex: 1; min-width: 0; padding-left: 20px; }
+  .bswitch .bname { display: flex; align-items: center; gap: 8px; height: 48px; font-weight: 600; font-size: 18px; letter-spacing: -0.02em; color: var(--ink); white-space: nowrap; overflow: hidden; }
+  .bswitch .bname svg { width: 14px; height: 14px; flex: none; color: var(--ink-3); }
+  /* Нативный список досок поверх названия: нажал на название — выбрал доску. */
+  .bswitch select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
+  .project .project-top .project-bar { flex: none; width: auto; padding-left: 8px; }
+  .project-top .project-name { display: none; }
+}
 .project-top .project-bar { flex: 1; min-width: 0; }
 .top-acts { display: flex; gap: 6px; padding-right: 14px; flex: none; }
 .ibtn { width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--bg); color: var(--ink); display: grid; place-items: center; }
@@ -1003,6 +1022,7 @@ async function renderWelcome() {
         store.set(SKEY, settings); connect();
       } catch { err.textContent = "Пароль не подходит."; err.hidden = false; btn.disabled = false; btn.textContent = "Войти"; }
     });
+    addEyes($("#main"));
     setTimeout(() => $("#lPass")?.focus(), 0);
     return;
   }
@@ -1088,8 +1108,10 @@ const POPEN = "ochered.projectOpen";
 function projectHtml(B) {
   const open = !!store.get(POPEN, {})[current];
   const d = B.meta.description || "";
+  const boardsSel = `<label class="bswitch"><span class="bname">${esc(B.meta.title)}<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2.5L6 0.8 9 2.5M3 9.5L6 11.2 9 9.5"/></svg></span><select id="boardSel" aria-label="Выбрать доску">${state.index.map(b =>
+    `<option value="${esc(b.id)}" ${b.id === current ? "selected" : ""}>${esc(b.title)}${(n => n ? ` · новых ответов: ${n}` : "")((state.boards[b.id]?.cards || []).filter(c => !c.archived).reduce((s, c) => s + newCount(c, b.id), 0))}</option>`).join("")}</select></label>`;
   return `<section class="project ${open ? "open" : ""}">
-    <div class="project-top">
+    <div class="project-top">${boardsSel}
     <button class="project-bar" data-ptoggle="1" aria-expanded="${open}" aria-controls="projectBody">
       <span class="project-name">${esc(B.meta.title)}</span>
       <span class="project-hint">${open ? "Скрыть описание" : d ? "Описание проекта" : "Добавить описание проекта"}</span>
@@ -1590,6 +1612,7 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("input", e => { if (e.target.id === "q") { query = e.target.value.trim(); renderBoard(); } });
 document.addEventListener("change", async e => {
+  if (e.target.id === "boardSel") { filter = null; query = ""; mobileCol = null; current = e.target.value; store.set("ochered.board", current); closeSheet(); render(); return; }
   if (["cCol", "cTurn", "cQueue", "cMax", "cRound", "cLabels"].includes(e.target.id)) {
     const c = getCard(); if (!c) return;
     c.column = $("#cCol").value; c.turn = $("#cTurn").value;
@@ -1698,6 +1721,23 @@ async function savePassword() {
   }
   out.innerHTML = `У токена нет доступа к репозиторию сайта${site ? ` ${esc(site.owner)}/${esc(site.repo)}` : ""}. Скопируй зашифрованный ключ и пришли его Claude — он положит файл сам. Ключ зашифрован, пароль в нём не виден.
     <textarea readonly rows="4" class="pw-blob">${esc(JSON.stringify(blob))}</textarea>`;
+}
+
+// Глазик у полей пароля/токена: показать или скрыть введённое.
+const ICON_EYE = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 10S5 4.5 10 4.5 18.2 10 18.2 10 15 15.5 10 15.5 1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.6"/></svg>`;
+const ICON_EYE_OFF = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.8 10S5 4.5 10 4.5 18.2 10 18.2 10 15 15.5 10 15.5 1.8 10 1.8 10z"/><circle cx="10" cy="10" r="2.6"/><path d="M3 17L17 3"/></svg>`;
+function addEyes(root = document) {
+  root.querySelectorAll('input[type="password"]:not([data-eyed])').forEach(inp => {
+    inp.dataset.eyed = "1";
+    const wrap = document.createElement("span"); wrap.className = "pw";
+    inp.replaceWith(wrap); wrap.appendChild(inp);
+    const b = document.createElement("button"); b.type = "button"; b.className = "eye"; b.setAttribute("aria-label", "Показать"); b.innerHTML = ICON_EYE;
+    b.addEventListener("click", e => {
+      e.preventDefault(); const show = inp.type === "password"; inp.type = show ? "text" : "password";
+      b.innerHTML = show ? ICON_EYE_OFF : ICON_EYE; b.setAttribute("aria-label", show ? "Скрыть" : "Показать"); inp.focus();
+    });
+    wrap.appendChild(b);
+  });
 }
 
 // ---------------------------------------------------------------- PWA и push
@@ -1818,6 +1858,7 @@ function setSideMin(on) {
   const b = $("#sideToggle"); const l = on ? "Развернуть меню" : "Свернуть меню"; b.title = l; b.setAttribute("aria-label", l);
 }
 setSideMin(!!store.get("ochered.sideMin", false));
+addEyes();
 connect();
 </script>
 </body>
