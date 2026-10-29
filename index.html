@@ -164,6 +164,7 @@ h1, h2, h3 { text-wrap: balance; }
 .project-body { padding: 0 20px 20px; display: flex; flex-direction: column; gap: 14px; align-items: flex-start; }
 .project-body .md { max-width: 75ch; color: var(--ink-2); }
 .project-body[hidden], .menu[hidden] { display: none; }
+[hidden] { display: none !important; }
 .project-body .btn { background: var(--bg); }
 .project-body .btn:hover { background: var(--navy); color: var(--navy-ink); }
 .project-empty { margin: 0; color: var(--ink-3); }
@@ -635,6 +636,7 @@ dialog.dialog::backdrop { background: var(--bg); }
     </div>
     <div class="side-foot">
       <button class="btn ghost block" id="newBoardBtn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg><span class="lbl">Новая доска</span></button>
+      <button class="btn ghost block" id="notifBtn"><svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5V8a4.5 4.5 0 019 0v4.5l1.2 1.5H3.3z"/><path d="M7.3 15.5a1.8 1.8 0 003.4 0"/></svg><span class="lbl">Уведомления</span></button>
       <button class="btn ghost block" id="settingsBtn"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 10l4-4M5 7.5L3.8 8.7a2.5 2.5 0 003.5 3.5L8.5 11M11 8.5l1.2-1.2a2.5 2.5 0 00-3.5-3.5L7.5 5"/></svg><span class="lbl">Подключение</span></button>
       <div class="conn" id="conn"><i></i><span>Не подключено</span></div>
     </div>
@@ -645,6 +647,17 @@ dialog.dialog::backdrop { background: var(--bg); }
 <button class="fab" id="fab" data-add="" aria-label="Новая карточка" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
 
 <aside class="sheet" id="sheet" hidden aria-label="Карточка"></aside>
+
+<dialog class="dialog" id="notifDlg">
+  <h3>Уведомления</h3>
+  <p id="pushHint">Проверяю…</p>
+  <form method="dialog" class="form">
+    <div class="actions">
+      <button class="btn" value="close">Закрыть</button>
+      <button type="button" class="btn primary" id="pushBtn">Включить на этом устройстве</button>
+    </div>
+  </form>
+</dialog>
 
 <dialog class="dialog" id="settingsDlg">
   <h3>Подключение к GitHub</h3>
@@ -657,10 +670,6 @@ dialog.dialog::backdrop { background: var(--bg); }
       <label class="field">Ветка<input id="sBranch" name="branch" placeholder="main" autocomplete="off"></label>
     </div>
     <label class="field">Токен GitHub<input id="sToken" name="token" type="password" autocomplete="off"><span class="hint">Fine-grained token, доступ только к этому репо, Contents: Read and write.</span></label>
-    <div class="phone" id="pushBox" hidden>
-      <div class="phone-head"><b>Уведомления</b><span class="hint" id="pushHint"></span></div>
-      <span class="row"><button type="button" class="btn" id="pushBtn">Включить на этом устройстве</button></span>
-    </div>
     <div class="phone" id="pwBox" hidden>
       <div class="phone-head"><b>Вход по паролю</b><span class="hint">Задай пароль — и на любом устройстве вход будет только по нему, без токена.</span></div>
       <div class="grid"><input id="pw1" type="password" placeholder="Новый пароль" autocomplete="new-password"><input id="pw2" type="password" placeholder="Ещё раз" autocomplete="new-password"></div>
@@ -1118,7 +1127,6 @@ function projectHtml(B) {
       <span class="chev" aria-hidden="true">${ICON_CHEV}</span>
     </button>
     <div class="top-acts">
-      <button class="ibtn" id="wakeBtn" title="Разбудить агентов: Claude и GPT сразу проверят карточки, где сейчас их ход" aria-label="Разбудить агентов">${ICON_BELL}</button>
       <button class="ibtn" id="refreshBtn" title="Обновить" aria-label="Обновить">${ICON_REFRESH}</button>
     </div>
     </div>
@@ -1601,6 +1609,10 @@ document.addEventListener("click", async e => {
     case "sideToggle": setSideMin(!$("#app").classList.contains("side-min")); break;
     case "pwBtn": savePassword(); break;
     case "pushBtn": enablePush(t); break;
+    case "notifBtn":
+      if (PREVIEW || settings.mode !== "github") { $("#pushHint").textContent = "Уведомления работают в приложении, подключённом к доске (не в демо)."; $("#pushBtn").hidden = true; }
+      else updatePushUi();
+      $("#notifDlg").showModal(); break;
     case "linkBtn":
       try { await navigator.clipboard.writeText(connectLink()); t.textContent = "Скопировано"; }
       catch { prompt("Скопируй ссылку:", connectLink()); }
@@ -1670,8 +1682,6 @@ function openSettings() {
   $("#previewNote").hidden = !PREVIEW;
   $("#phoneBox").hidden = $("#pwBox").hidden = PREVIEW || settings.mode !== "github" || !settings.token;
   $("#pwOut").hidden = true;
-  $("#pushBox").hidden = PREVIEW || settings.mode !== "github" || !settings.token;
-  updatePushUi();
   $("#qr").hidden = $("#qrHint").hidden = true; $("#qr").innerHTML = "";
   $("#settingsDlg").showModal();
 }
