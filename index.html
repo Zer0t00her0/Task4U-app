@@ -400,6 +400,35 @@ h1, h2, h3 { text-wrap: balance; }
 .m-msg.human .m-text { background: var(--human-fill); color: var(--fill-ink); }
 .m-text h1, .m-text h2, .m-text h3 { font-size: 14px; }
 .m-text table { font-size: 13px; }
+.tbl { overflow-x: auto; max-width: 100%; margin: 0 0 0.85em; }
+.tbl table { margin: 0; }
+@media (max-width: 700px) {
+  /* Таблица → стопка карточек: первая колонка — заголовок карточки, остальные — «подпись: значение». */
+  .tbl { overflow: visible; }
+  .tbl table, .tbl tbody, .tbl tr, .tbl td { display: block; width: auto; border: 0 !important; background: none; }
+  .tbl thead { display: none; }
+  .tbl tr { background: var(--bg); border-radius: 14px; padding: 12px 14px; margin: 0 0 8px; }
+  .m-msg.human .tbl tr { background: var(--surface); }
+  .tbl td { padding: 3px 0 !important; text-align: left !important; font-size: 14px; line-height: 1.45; }
+  .tbl td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: var(--ink-3); }
+  .tbl td:first-child { font-weight: 600; font-size: 15px; }
+  .tbl td:first-child::before { display: none; }
+  .tbl td:empty { display: none; }
+  /* Если первая колонка — номер, заголовком карточки становится вторая. */
+  .tbl table.numbered td:first-child { display: inline; font-size: 13px; color: var(--ink-3); margin-right: 6px; }
+  .tbl table.numbered td:first-child::after { content: "."; }
+  .tbl table.numbered td:nth-child(2) { display: inline; font-weight: 600; font-size: 15px; }
+  .tbl table.numbered td:nth-child(2)::before { display: none; }
+  .tbl table.numbered td:nth-child(3) { margin-top: 6px; }
+  /* Диалог шире: без столбца аватарок и двойных отступов. */
+  .m-side { padding-left: 0; padding-right: 0; }
+  .m-feed { padding: 8px 10px; gap: 16px; }
+  .m-msg { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .m-msg > .av { display: none; }
+  .m-who { padding-left: 4px; }
+  .m-text { padding: 14px 16px 16px; }
+  .m-side-head { padding-left: 14px; }
+}
 @media (max-width: 900px) {
   .sheet { padding: 0; display: block; overflow-y: auto; }
   .m-close-mobile { display: grid; }
@@ -943,7 +972,20 @@ let busy = false;
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const md = s => DOMPurify.sanitize(marked.parse(s || "", { breaks: true }));
+// Markdown → HTML. Таблицы оборачиваем и подписываем ячейки заголовками столбцов:
+// на телефоне каждая строка таблицы показывается карточкой «Заголовок: значение».
+const md = s => {
+  const html = DOMPurify.sanitize(marked.parse(s || "", { breaks: true }));
+  if (!html.includes("<table")) return html;
+  const t = document.createElement("template"); t.innerHTML = html;
+  t.content.querySelectorAll("table").forEach(tbl => {
+    const heads = [...tbl.querySelectorAll("thead th")].map(th => th.textContent.trim());
+    if (/^(#|№|n|no\.?)$/i.test(heads[0] || "")) tbl.classList.add("numbered");
+    tbl.querySelectorAll("tbody tr").forEach(tr => [...tr.children].forEach((td, i) => { if (heads[i]) td.setAttribute("data-label", heads[i]); }));
+    const wrap = document.createElement("div"); wrap.className = "tbl"; tbl.replaceWith(wrap); wrap.appendChild(tbl);
+  });
+  return t.innerHTML;
+};
 const ICON_MSG = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 4.5A1.5 1.5 0 014.5 3h7A1.5 1.5 0 0113 4.5v5a1.5 1.5 0 01-1.5 1.5H7l-3 2.5V11h.5"/></svg>`;
 const ICON_PLUS = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>`;
 
