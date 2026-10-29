@@ -516,6 +516,8 @@ dialog.dialog::backdrop { background: var(--bg); }
 .qr { align-self: center; width: 220px; padding: 10px; border-radius: 12px; background: #fff; }
 .qr svg { display: block; width: 100%; height: auto; }
 
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 50; max-width: min(520px, calc(100vw - 32px)); padding: 14px 20px; border-radius: 16px; background: var(--navy); color: var(--navy-ink); font-size: 14px; line-height: 1.4; }
+
 /* toolbar */
 .views { display: inline-flex; gap: 2px; padding: 4px; height: 44px; border-radius: 999px; background: var(--surface); flex: none; }
 .views button { width: 40px; height: 36px; border: 0; border-radius: 999px; background: none; color: var(--ink-3); display: grid; place-items: center; }
@@ -968,7 +970,18 @@ function relTime(iso) {
   return d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
 function plural(n, a, b, c) { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; }
-function setConn(text, kind = "") { const el = $("#conn"); el.className = "conn " + kind; el.querySelector("span").textContent = text; }
+function setConn(text, kind = "") {
+  const el = $("#conn"); el.className = "conn " + kind; el.querySelector("span").textContent = text;
+  if (kind === "err") toast(text);
+}
+// Заметное сообщение об ошибке — на телефоне строка статуса скрыта.
+let toastTimer = 0;
+function toast(text) {
+  let t = $("#toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "alert"); document.body.appendChild(t); }
+  t.textContent = text; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 7000);
+}
 
 /* ------------------------------------------------------------------ load */
 async function connect() {
@@ -1472,7 +1485,9 @@ async function sendMessage(pass = false) {
     const cols = state.boards[openCard.board].meta.columns || [];
     if (cols[1] && c.column === cols[0].id) c.column = cols[1].id;
   }
-  await saveCard(c, `${c.title}: ${pass ? "ход" : "сообщение"} → ${next}`);
+  const ok = await saveCard(c, `${c.title}: ${pass ? "ход" : "сообщение"} → ${next}`);
+  // Не сохранилось — возвращаем текст в поле, чтобы не пропал.
+  if (!ok && text && !pass) { const box = $("#cMsg"); if (box && !box.value) box.value = text; toast(`Сообщение не сохранилось (${$("#conn span").textContent}). Текст вернул в поле — нажми «Отправить» ещё раз.`); }
 }
 
 async function moveCard(board, id, col, beforeId) {
