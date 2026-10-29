@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Task4U</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%235B5BEA'/%3E%3C/svg%3E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Task4U">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#EFEFF2">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -631,6 +638,10 @@ dialog.dialog::backdrop { background: var(--bg); }
       <label class="field">Ветка<input id="sBranch" name="branch" placeholder="main" autocomplete="off"></label>
     </div>
     <label class="field">Токен GitHub<input id="sToken" name="token" type="password" autocomplete="off"><span class="hint">Fine-grained token, доступ только к этому репо, Contents: Read and write.</span></label>
+    <div class="phone" id="pushBox" hidden>
+      <div class="phone-head"><b>Уведомления</b><span class="hint" id="pushHint"></span></div>
+      <span class="row"><button type="button" class="btn" id="pushBtn">Включить на этом устройстве</button></span>
+    </div>
     <div class="phone" id="pwBox" hidden>
       <div class="phone-head"><b>Вход по паролю</b><span class="hint">Задай пароль — и на любом устройстве вход будет только по нему, без токена.</span></div>
       <div class="grid"><input id="pw1" type="password" placeholder="Новый пароль" autocomplete="new-password"><input id="pw2" type="password" placeholder="Ещё раз" autocomplete="new-password"></div>
@@ -947,6 +958,7 @@ async function reload(silent = false) {
     else if (!current || !state.boards[current]) current = state.index[0].id;
     store.set("ochered.board", current);
     render();
+    if (location.hash.startsWith("#card=")) openFromHash();
     if (settings.mode === "demo") setConn("Демо, данные в браузере");
     else setConn(`${settings.owner}/${settings.repo} · ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}`, "ok");
   } catch (e) {
@@ -1566,6 +1578,7 @@ document.addEventListener("click", async e => {
     case "qrBtn": showQr(); break;
     case "sideToggle": setSideMin(!$("#app").classList.contains("side-min")); break;
     case "pwBtn": savePassword(); break;
+    case "pushBtn": enablePush(t); break;
     case "linkBtn":
       try { await navigator.clipboard.writeText(connectLink()); t.textContent = "Скопировано"; }
       catch { prompt("Скопируй ссылку:", connectLink()); }
@@ -1634,6 +1647,8 @@ function openSettings() {
   $("#previewNote").hidden = !PREVIEW;
   $("#phoneBox").hidden = $("#pwBox").hidden = PREVIEW || settings.mode !== "github" || !settings.token;
   $("#pwOut").hidden = true;
+  $("#pushBox").hidden = PREVIEW || settings.mode !== "github" || !settings.token;
+  updatePushUi();
   $("#qr").hidden = $("#qrHint").hidden = true; $("#qr").innerHTML = "";
   $("#settingsDlg").showModal();
 }
@@ -1684,6 +1699,65 @@ async function savePassword() {
   out.innerHTML = `У токена нет доступа к репозиторию сайта${site ? ` ${esc(site.owner)}/${esc(site.repo)}` : ""}. Скопируй зашифрованный ключ и пришли его Claude — он положит файл сам. Ключ зашифрован, пароль в нём не виден.
     <textarea readonly rows="4" class="pw-blob">${esc(JSON.stringify(blob))}</textarea>`;
 }
+
+// ---------------------------------------------------------------- PWA и push
+// Публичный VAPID-ключ; приватный хранится в секрете VAPID_PRIVATE_KEY репозитория с данными.
+const VAPID_PUBLIC = "BOXjBF0MevJVTYG4holQwq5xfF8Pu7n8s0tD2jTL70FJ5kGrpfzVZM-RRgN5NtUFxZgdIkqvLQjd1XmSoZnmdjs";
+const SUBS_PATH = "push/subscriptions.json";
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+let swReg = null;
+if ("serviceWorker" in navigator && !PREVIEW && location.protocol === "https:") {
+  navigator.serviceWorker.register("sw.js").then(r => { swReg = r; }).catch(() => {});
+}
+const getReg = () => swReg ? Promise.resolve(swReg) : Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 4000))]);
+async function updatePushUi() {
+  const hint = $("#pushHint"), btn = $("#pushBtn"); if (!hint) return;
+  btn.hidden = false;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    hint.textContent = isIOS && !isStandalone()
+      ? "На iPhone уведомления работают только из приложения на экране «Домой»: в Safari нажми «Поделиться» → «На экран Домой», открой Task4U с иконки и включи здесь."
+      : "Этот браузер не поддерживает уведомления.";
+    btn.hidden = true; return;
+  }
+  hint.textContent = "Проверяю…";
+  const reg = await getReg();
+  if (!reg) { hint.textContent = "Не удалось запустить фоновую часть приложения. Обнови страницу и попробуй ещё раз."; btn.hidden = true; return; }
+  const sub = await reg.pushManager.getSubscription().catch(() => null);
+  if (Notification.permission === "denied") { hint.textContent = "Уведомления запрещены в настройках браузера/iPhone. Разреши их для Task4U и вернись сюда."; btn.hidden = true; }
+  else if (sub) { hint.textContent = "Включены на этом устройстве: придут, когда агенты ответят или найдут вакансии."; btn.textContent = "Отправить тестовое"; btn.dataset.mode = "test"; }
+  else { hint.textContent = "Пришлю уведомление, когда Claude или GPT ответят в карточке или появятся новые вакансии."; btn.textContent = "Включить на этом устройстве"; btn.dataset.mode = ""; }
+}
+const b64urlToU8 = s => { const b = atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function enablePush(btn) {
+  if (btn.dataset.mode === "test") {
+    const reg = await getReg(); if (!reg) return;
+    reg.showNotification("Task4U", { body: "Так будут выглядеть уведомления.", icon: "icons/icon-192.png" });
+    return;
+  }
+  const hint = $("#pushHint"); btn.disabled = true;
+  try {
+    if (await Notification.requestPermission() !== "granted") { hint.textContent = "Без разрешения уведомления не придут."; return; }
+    const reg = await getReg(); if (!reg) throw new Error("обнови страницу");
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64urlToU8(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    const list = (await backend.readJson(SUBS_PATH)) || [];
+    const rest = list.filter(s => s.endpoint !== j.endpoint);
+    rest.push({ endpoint: j.endpoint, keys: j.keys, device: isIOS ? "iPhone" : navigator.platform || "browser", at: new Date().toISOString() });
+    await backend.writeJson(SUBS_PATH, rest, "уведомления: новое устройство");
+    hint.textContent = "Готово. Уведомления включены на этом устройстве.";
+  } catch (e) { hint.textContent = "Не получилось: " + e.message; }
+  finally { btn.disabled = false; updatePushUi(); }
+}
+// Ссылка из уведомления: #card=<доска>/<карточка> — открыть эту карточку.
+function openFromHash() {
+  const m = location.hash.match(/^#card=([^/]+)\/(.+)$/); if (!m || !state.boards?.[m[1]]) return;
+  history.replaceState(null, "", location.pathname + location.search);
+  current = m[1]; store.set("ochered.board", current);
+  if (state.boards[m[1]].cards.some(c => c.id === m[2])) { openCard = { board: m[1], id: decodeURIComponent(m[2]) }; }
+  render();
+}
+window.addEventListener("hashchange", openFromHash);
 
 // Ссылка «подключить телефон»: настройки в #-части адреса (она не уходит на сервер), читаются и сразу стираются.
 const b64url = s => b64enc(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
