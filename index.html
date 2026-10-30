@@ -405,6 +405,8 @@ body.is-dragging .coltabs button { background: var(--surface); border-radius: 10
 .m-text > p { margin: 0 0 0.85em; }
 .m-text > :last-child { margin-bottom: 0; }
 .m-msg.human .m-text { background: var(--human-fill); color: var(--fill-ink); }
+.m-msg.human.other .m-text { background: #D6E8FB; }
+.m-msg.human.other .av { background: #D6E8FB; }
 .m-text h1, .m-text h2, .m-text h3 { font-size: 14px; }
 .m-text table { font-size: 13px; }
 .tbl { overflow-x: auto; max-width: 100%; margin: 0 0 0.85em; }
@@ -709,6 +711,18 @@ dialog.dialog::backdrop { background: var(--bg); }
 
 <aside class="sheet" id="sheet" hidden aria-label="Карточка"></aside>
 
+<dialog class="dialog" id="meDlg">
+  <h3>Как вас подписывать?</h3>
+  <p>Имя появится над вашими сообщениями, чтобы было понятно, кто что спросил. Хранится на этом устройстве.</p>
+  <form method="dialog" class="form">
+    <label class="field">Имя<input id="meName" maxlength="30" placeholder="Например, Роман" autocomplete="name"></label>
+    <div class="actions">
+      <button class="btn" value="cancel" formnovalidate>Отмена</button>
+      <button class="btn primary" value="ok">Сохранить</button>
+    </div>
+  </form>
+</dialog>
+
 <dialog class="dialog" id="notifDlg">
   <h3>Уведомления</h3>
   <p id="pushHint">Проверяю…</p>
@@ -844,7 +858,7 @@ class GitHubStore {
     return Array.isArray(items) ? items.filter(i => i.type === "file" && i.name.endsWith(".json")) : [];
   }
   async writeJson(path, obj, message) {
-    const body = { message: `[human] ${message}`, content: b64enc(JSON.stringify(obj, null, 2) + "\n"), branch: this.s.branch };
+    const body = { message: `[human] ${ME ? ME + ": " : ""}${message}`, content: b64enc(JSON.stringify(obj, null, 2) + "\n"), branch: this.s.branch };
     if (this.sha[path]) body.sha = this.sha[path];
     const r = await this.req(path, { method: "PUT", body: JSON.stringify(body) });
     this.sha[path] = r.content.sha;
@@ -1023,6 +1037,17 @@ function whoName(w, meta) {
   if (p[w]?.name) return p[w].name;
   return { claude: "Claude", gpt: "GPT", human: "Я", none: "Никто" }[w] || w;
 }
+// Несколько людей на доске: у каждого устройства своё имя (хранится в браузере),
+// оно записывается в каждый комментарий (поле name). Старые комментарии без имени — Романа.
+const MEKEY = "ochered.me";
+let ME = store.get(MEKEY, "");
+const LEGACY_HUMAN = "Роман";
+const humanName = m => m.name || LEGACY_HUMAN;
+function msgWho(m, meta) { return m.author === "human" ? humanName(m) : whoName(m.author, meta); }
+function askName(cb) {
+  const d = $("#meDlg"); $("#meName").value = ME || ""; d.showModal(); setTimeout(() => $("#meName").focus(), 0);
+  d.onclose = () => { if (d.returnValue === "ok") { const v = $("#meName").value.trim(); if (v) { ME = v; store.set(MEKEY, v); render(); cb && cb(); } } };
+}
 function initial(w) { return { claude: "C", gpt: "G", human: "Я" }[w] || (w || "?")[0].toUpperCase(); }
 function av(w, cls = "") { return `<span class="av ${whoClass(w)} ${cls}" title="${esc(whoName(w))}">${esc(initial(w))}</span>`; }
 function turnLabel(w, meta) {
@@ -1144,6 +1169,7 @@ const ICON_REFRESH = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none
 const ICON_BOX = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="13" height="3.5" rx="1"/><path d="M3.8 6.5v7.2a1 1 0 001 1h8.4a1 1 0 001-1V6.5M7.2 9.5h3.6"/></svg>`;
 const ICON_LINK = `<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 10l4-4M5 7.5L3.8 8.7a2.5 2.5 0 003.5 3.5L8.5 11M11 8.5l1.2-1.2a2.5 2.5 0 00-3.5-3.5L7.5 5"/></svg>`;
 const ICON_COLLAPSE = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>`;
+const ICON_USER = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="6.5" r="3"/><path d="M3.5 15.5c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M12.2 12.2L16 16"/></svg>`;
 const PAGE = 30;
 let filter = null;          // claude | gpt | human | none | null
@@ -1225,6 +1251,7 @@ function projectHtml(B) {
       <div class="menu-wrap">
         <button class="ibtn" id="topMenuBtn" title="Ещё" aria-label="Ещё" aria-haspopup="menu" aria-expanded="false">${ICON_DOTS}</button>
         <div class="menu" id="topMenu" role="menu" hidden>
+          <button class="menu-item" id="meBtn" role="menuitem">${ICON_USER}<span>${ME ? `Моё имя: ${esc(ME)}` : "Указать моё имя"}</span></button>
           <button class="menu-item" id="settingsBtn" role="menuitem">${ICON_LINK}<span>Подключение</span></button>
         </div>
       </div>
@@ -1512,8 +1539,8 @@ function renderSheet() {
         </div>
         <div class="m-feed">
           ${msgs.length ? msgs.map(m => `
-            <article class="m-msg ${m.author === "human" ? "human" : ""}">${av(m.author)}
-              <div class="m-body"><div class="m-who"><b>${esc(whoName(m.author, meta))}</b><span>${relTime(m.at)}</span></div>
+            <article class="m-msg ${m.author === "human" ? `human ${humanName(m) !== (ME || LEGACY_HUMAN) ? "other" : ""}` : ""}">${m.author === "human" ? `<span class="av who-human" title="${esc(humanName(m))}">${esc(humanName(m)[0].toUpperCase())}</span>` : av(m.author)}
+              <div class="m-body"><div class="m-who"><b>${esc(msgWho(m, meta))}</b><span>${relTime(m.at)}</span></div>
               <div class="md m-text">${md(m.text)}</div></div></article>`).join("")
             : `<p class="m-muted">Обсуждение ещё не началось. ${c.turn && !["human", "none"].includes(c.turn) ? `Первым ответит ${esc(whoName(c.turn, meta))} при следующем запуске.` : "Передай ход агенту, чтобы начать."}</p>`}
         </div>
@@ -1588,7 +1615,8 @@ async function sendMessage(pass = false) {
   const text = $("#cMsg").value.trim();
   const next = $("#cNext").value;
   if (!pass && !text) { $("#cMsg").focus(); return; }
-  if (text && !pass) c.comments = [...(c.comments || []), { id: "m-" + rid(4), author: "human", at: nowIso(), text }];
+  if (!ME) { askName(() => sendMessage(pass)); return; }
+  if (text && !pass) c.comments = [...(c.comments || []), { id: "m-" + rid(4), author: "human", name: ME, at: nowIso(), text }];
   if (!pass) $("#cMsg").value = "";
   if (!["human", "none"].includes(next)) { c.replies = 0; c.round = 0; if (!c.max_replies && c.max_rounds) { c.max_replies = maxReplies(c); delete c.max_rounds; } }
   c.turn = next;
@@ -1758,6 +1786,7 @@ document.addEventListener("click", async e => {
     case "sideToggle": setSideMin(!$("#app").classList.contains("side-min")); break;
     case "pwBtn": savePassword(); break;
     case "pushBtn": enablePush(t); break;
+    case "meBtn": $("#topMenu").hidden = true; askName(); break;
     case "notifBtn":
       if (PREVIEW || settings.mode !== "github") { $("#pushHint").textContent = "Уведомления работают в приложении, подключённом к доске (не в демо)."; $("#pushBtn").hidden = true; }
       else updatePushUi();

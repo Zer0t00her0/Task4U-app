@@ -1,5 +1,5 @@
 // Service worker Task4U: push-уведомления и запасная копия страницы на случай плохой сети.
-const CACHE = "task4u-v10";
+const CACHE = "task4u-v11";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
