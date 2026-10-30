@@ -261,7 +261,7 @@ h1, h2, h3 { text-wrap: balance; }
 .col-head .add { margin-left: auto; width: 36px; height: 36px; border-radius: 11px; border: 0; background: var(--bg); color: var(--ink); display: grid; place-items: center; }
 .col-head .add:hover { background: var(--navy); color: var(--navy-ink); }
 .list { display: flex; flex-direction: column; gap: 12px; min-height: 80px; border-radius: var(--r-lg); }
-.column.drop .list { outline: 2px dashed var(--accent); outline-offset: 4px; }
+.column.drop .col-head, .rgroup.drop .rhead { outline: 2px solid var(--accent); outline-offset: -2px; }
 .col-empty { border: 2px dashed var(--line); border-radius: var(--r-lg); padding: 28px 16px; color: var(--ink-3); font-size: 14px; text-align: center; background: none; width: 100%; }
 .col-empty:hover { color: var(--ink); border-color: var(--ink-3); }
 
@@ -271,7 +271,14 @@ h1, h2, h3 { text-wrap: balance; }
 }
 .card:hover { background: color-mix(in srgb, var(--tf) 88%, var(--ink)); }
 .card .labels .label { background: var(--surface); color: var(--ink); }
-.card.dragging { visibility: hidden; }
+.card.dragging, .mini.dragging, .row-c.dragging { display: none; }
+.drag-ghost { position: fixed; z-index: 60; pointer-events: none; margin: 0; transform: rotate(2deg); outline: 2px solid var(--accent); outline-offset: -2px; }
+.drop-ph { border: 2px dashed var(--accent); border-radius: var(--r-lg); background: var(--surface); flex: none; }
+.rgroup .drop-ph { border-radius: 12px; height: 52px !important; }
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+body.is-dragging .coltabs button { background: var(--surface); border-radius: 10px 10px 0 0; }
+.card, .mini, .row-c { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.coltabs button.tab-drop { color: var(--accent); border-bottom-color: var(--accent); }
 .card { background: var(--tf); }
 .card-top { display: flex; align-items: center; gap: 8px; min-height: 28px; font-size: 13px; font-weight: 500; }
 .card-top .unread { margin-left: auto; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 700; display: inline-grid; place-items: center; flex: none; }
@@ -571,7 +578,6 @@ dialog.dialog::backdrop { background: var(--bg); }
 .board-item.on .board-btn .u { background: var(--accent-ink); color: var(--accent); }
 .mini .nb, .row-c .nb { flex: none; min-width: 26px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; }
 .mini:hover { background: var(--navy); color: var(--navy-ink); }
-.mini.dragging { visibility: hidden; }
 
 /* list view */
 .board.as-list { display: block; }
@@ -620,6 +626,13 @@ dialog.dialog::backdrop { background: var(--bg); }
 .flt[aria-pressed="true"] b { color: inherit; }
 .col-head svg, .rhead svg { width: 18px; height: 18px; color: var(--ink-3); flex: none; }
 .column.arch .col-head { background: none; outline: 1.5px solid var(--line); outline-offset: -1.5px; }
+.arch-bar { width: 56px; min-height: 260px; border: 1.5px dashed var(--line); border-radius: var(--r-md); background: none; color: var(--ink-2); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px 0; font: inherit; font-weight: 500; }
+.arch-bar:hover, .column.arch.drop .arch-bar { border-color: var(--accent); color: var(--ink); }
+.arch-bar svg { width: 18px; height: 18px; }
+.arch-v { writing-mode: vertical-rl; transform: rotate(180deg); font-size: 15px; }
+.arch-bar b { font-size: 13px; color: var(--ink-3); font-weight: 600; }
+.rhead.arch-row { width: 100%; border: 0; background: none; font: inherit; color: var(--ink-2); text-align: left; cursor: pointer; }
+.rhead.arch-row .arch-show { margin-left: auto; font-size: 13px; color: var(--accent); padding-right: 10px; }
 .column.arch .mini { background: var(--surface); color: var(--ink); }
 .column.arch .mini .ic { background: var(--bg); }
 .views[hidden] { display: none; }
@@ -1056,7 +1069,7 @@ async function reload(silent = false) {
 const POLL_MS = 20000;
 let polling = false;
 async function autoRefresh() {
-  if (polling || busy || !backend || settings.mode === "demo" || document.hidden) return;
+  if (polling || busy || drag || !backend || settings.mode === "demo" || document.hidden) return;
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.id !== "q") return;
   const pal = $("#palPop");
@@ -1115,6 +1128,7 @@ const ICON_BELL = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" s
 const ICON_REFRESH = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 9a6 6 0 1 1-1.8-4.3"/><path d="M15 2.8v3.6h-3.6"/></svg>`;
 const ICON_BOX = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3" width="13" height="3.5" rx="1"/><path d="M3.8 6.5v7.2a1 1 0 001 1h8.4a1 1 0 001-1V6.5M7.2 9.5h3.6"/></svg>`;
 const ICON_LINK = `<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 10l4-4M5 7.5L3.8 8.7a2.5 2.5 0 003.5 3.5L8.5 11M11 8.5l1.2-1.2a2.5 2.5 0 00-3.5-3.5L7.5 5"/></svg>`;
+const ICON_COLLAPSE = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M12.2 12.2L16 16"/></svg>`;
 const PAGE = 30;
 let filter = null;          // claude | gpt | human | none | null
@@ -1214,6 +1228,7 @@ function matches(c) {
 }
 
 const ARCH = "__archive"; // виртуальная колонка «Архив»: карточки с archived: true
+const ARCHKEY = "ochered.archOpen";
 function renderBoard() {
   const B = state.boards[current]; if (!B) return;
   const own = B.meta.columns || [];
@@ -1229,6 +1244,11 @@ function renderBoard() {
     [["human", "Ждут меня"], ["claude", "Claude"], ["gpt", "GPT"], ["none", "Закрыто"]].map(([w, label]) =>
       `<button class="flt ${whoClass(w)}" data-filter="${w}" aria-pressed="${filter === w}"><i aria-hidden="true"></i>${label} <b>${cnt(w)}</b></button>`).join("");
   $("#boardArea").style.setProperty("--cols", cols.length || 1);
+  // Архив по умолчанию свёрнут в узкую полосу; раскрывается кнопкой (запоминается).
+  const archOpen = !!store.get(ARCHKEY, false) || (matchMedia("(max-width: 700px)").matches && mobileCol === ARCH);
+  const hasVirtual = cols.some(c => c.virtual);
+  $("#boardArea").style.gridTemplateColumns = hasVirtual && view !== "list"
+    ? `repeat(${cols.length - 1}, minmax(200px, 1fr)) ${archOpen ? "minmax(200px, 1fr)" : "56px"}` : "";
   $("#views").innerHTML = [["cards", "Крупные карточки", ICON_V_CARDS], ["compact", "Компактные карточки", ICON_V_COMPACT], ["list", "Списком", ICON_V_LIST]]
     .map(([v, n, ic]) => `<button data-view="${v}" aria-pressed="${view === v}" title="${n}" aria-label="${n}">${ic}</button>`).join("");
   const asList = view === "list";
@@ -1251,8 +1271,9 @@ function renderBoard() {
     $("#boardArea").innerHTML = note + `<div class="rows">` + cols.map((col, i) => {
       const list = byCol(col.id); if (!list.length) return "";
       const all = showAll.has(col.id), shown = all ? list : list.slice(0, PAGE);
+      if (col.virtual && !archOpen) return `<section class="rgroup arch" data-col="${ARCH}"><button class="rhead arch-row" data-archtoggle="1" aria-expanded="false">${ICON_BOX}<h3>Архив</h3><span class="count">${list.length}</span><span class="arch-show">Показать</span></button></section>`;
       return `<section class="rgroup ${col.virtual ? "arch" : ""}" data-col="${esc(col.id)}">
-        <div class="rhead" style="--d:${colDot(col, i)}">${col.virtual ? ICON_BOX : `<span class="dot" aria-hidden="true"></span>`}<h3>${esc(col.title)}</h3><span class="count">${list.length}</span>${addBtn(col)}</div>
+        <div class="rhead" style="--d:${colDot(col, i)}">${col.virtual ? ICON_BOX : `<span class="dot" aria-hidden="true"></span>`}<h3>${esc(col.title)}</h3><span class="count">${list.length}</span>${col.virtual ? `<button class="add" data-archtoggle="1" title="Свернуть архив" aria-label="Свернуть архив">${ICON_COLLAPSE}</button>` : addBtn(col)}</div>
         ${shown.map(c => rowHtml(c, B.meta)).join("")}
         ${more(col, list, all)}
       </section>`;
@@ -1265,12 +1286,17 @@ function renderBoard() {
     const all = showAll.has(col.id);
     const shown = all ? list : list.slice(0, PAGE);
     const empty = filter || query ? `<div class="col-empty" style="cursor:default">Ничего не найдено</div>`
-      : col.virtual ? `<div class="col-empty" style="cursor:default">${FINE ? "Перетащи сюда отработанную карточку" : "Отработанные карточки: меню «⋯» → «В архив»"}</div>`
-      : `<button class="col-empty" data-add="${esc(col.id)}">${FINE ? "Перетащи сюда или добавь карточку" : "Добавить карточку"}</button>`;
+      : col.virtual ? `<div class="col-empty" style="cursor:default">Перетащи сюда отработанную карточку</div>`
+      : `<button class="col-empty" data-add="${esc(col.id)}">Перетащи сюда или добавь карточку</button>`;
+    if (col.virtual && !archOpen) {
+      return `<section class="column arch collapsed ${col.id === mobileCol ? "active" : ""}" data-col="${ARCH}">
+        <button class="arch-bar" data-archtoggle="1" title="Показать архив" aria-expanded="false">${ICON_BOX}<span class="arch-v">Архив</span><b>${list.length}</b></button>
+      </section>`;
+    }
     // В архиве карточки всегда компактные — это справка, а не работа.
     const render = col.virtual || view === "compact" ? miniHtml : cardHtml;
     return `<section class="column ${col.virtual ? "arch" : ""} ${col.id === mobileCol ? "active" : ""}" data-col="${esc(col.id)}">
-      <div class="col-head" style="--d:${colDot(col, i)}">${col.virtual ? ICON_BOX : ""}<h3 title="${esc(col.title)}">${esc(col.title)}</h3>${col.virtual ? "" : `<span class="dot" aria-hidden="true"></span>`}<span class="count">${list.length}</span>${addBtn(col)}</div>
+      <div class="col-head" style="--d:${colDot(col, i)}">${col.virtual ? ICON_BOX : ""}<h3 title="${esc(col.title)}">${esc(col.title)}</h3>${col.virtual ? "" : `<span class="dot" aria-hidden="true"></span>`}<span class="count">${list.length}</span>${col.virtual ? `<button class="add" data-archtoggle="1" title="Свернуть архив" aria-label="Свернуть архив">${ICON_COLLAPSE}</button>` : addBtn(col)}</div>
       <div class="list">${list.length ? shown.map(c => render(c, B.meta)).join("") : empty}
         ${more(col, list, all)}</div>
     </section>`;
@@ -1313,7 +1339,7 @@ function stackHtml(queue, turn, meta) {
 
 function cardHtml(c, meta) {
   const n = (c.comments || []).length;
-  return `<button class="card ${whoClass(c.turn)}" ${colorStyle(c)} ${FINE ? 'draggable="true"' : ""} data-card="${esc(c.id)}">
+  return `<button class="card ${whoClass(c.turn)}" ${colorStyle(c)} data-card="${esc(c.id)}">
     <span class="card-top"><span class="ic" aria-hidden="true">${esc(c.turn === "none" || !c.turn ? "✓" : initial(c.turn))}</span><span>${esc(turnLabel(c.turn, meta))}</span>${newBadge(c, "unread")}</span>
     <span class="title">${esc(c.title)}</span>
     ${c.labels?.length ? `<span class="labels">${c.labels.map(l => `<span class="label">${esc(l)}</span>`).join("")}</span>` : ""}
@@ -1331,7 +1357,7 @@ function newBadge(c, cls) {
 // Компактная карточка: одна строка, одинаковой высоты, без выреза и подвала.
 function miniHtml(c, meta) {
   const n = (c.comments || []).length;
-  return `<button class="mini ${whoClass(c.turn)}" ${colorStyle(c)} ${FINE ? 'draggable="true"' : ""} data-card="${esc(c.id)}" title="${esc(c.title)} · ${esc(turnLabel(c.turn, meta))}">
+  return `<button class="mini ${whoClass(c.turn)}" ${colorStyle(c)} data-card="${esc(c.id)}" title="${esc(c.title)} · ${esc(turnLabel(c.turn, meta))}">
     <span class="ic" aria-hidden="true">${esc(c.turn === "none" || !c.turn ? "✓" : initial(c.turn))}</span>
     <span class="t">${esc(c.title)}</span>
     ${newBadge(c, "nb") || (n ? `<span class="n">${ICON_CHAT}${n}</span>` : "")}
@@ -1645,6 +1671,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.color) { const cid = t.closest("[data-cid]")?.dataset.cid; const cc = cid ? state.boards[current]?.cards.find(x => x.id === cid) : getCard(); hidePal(); if (!cc) return; const v = t.dataset.color === "auto" ? "" : t.dataset.color; if ((cc.color || "") === v) return; if (v) cc.color = v; else delete cc.color; saveCard(cc, `${cc.title}: цвет`, cid ? current : undefined); return; }
   if (t.dataset.closesheet) { closeSheet(); return; }
   if (t.dataset.edit) { if (Date.now() - lastBlur < 300) return; editing = editing === t.dataset.edit ? null : t.dataset.edit; renderSheet(); setTimeout(() => $(editing === "desc" ? "#cDesc" : "#cReport")?.focus(), 0); return; }
+  if (t.dataset.archtoggle) { store.set(ARCHKEY, !store.get(ARCHKEY, false)); renderBoard(); return; }
   if (t.dataset.view) { view = t.dataset.view; store.set(VIEWKEY, view); renderBoard(); return; }
   if (t.dataset.filter) { filter = t.dataset.filter === "all" || filter === t.dataset.filter ? null : t.dataset.filter; renderBoard(); return; }
   if (t.dataset.clear) { filter = null; query = ""; const q = $("#q"); if (q) q.value = ""; renderBoard(); return; }
@@ -1732,26 +1759,95 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && e.target.id === "cMsg") sendMessage(false);
 });
 
-let drag = null;
+// ---------------------------------------------------------------- перетаскивание
+// Своё перетаскивание на pointer-событиях: работает мышью (сразу) и пальцем (после удержания ~0,35 с),
+// в любом браузере. Карточку можно бросить в любую колонку и в любое место внутри неё;
+// на телефоне — на вкладку колонки сверху. Колонка «Архив» тоже принимает карточки.
+let drag = null;          // { id, el, ghost, ph, dx, dy, started, timer, pointerId, startX, startY, touch }
 let justDragged = 0;
-document.addEventListener("dragstart", e => {
-  const card = e.target.closest?.(".card, .mini"); if (!card) return;
-  drag = card.dataset.card; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", drag);
-  requestAnimationFrame(() => card.classList.add("dragging"));
+const DRAGGABLE = ".card[data-card], .mini[data-card], .row-c[data-card]";
+const LIST_OF = col => col.querySelector(".list") || col;
+const itemsIn = col => [...LIST_OF(col).querySelectorAll(DRAGGABLE)].filter(el => el !== drag?.el);
+
+document.addEventListener("pointerdown", e => {
+  if (e.button !== 0 || drag) return;
+  const el = e.target.closest(DRAGGABLE); if (!el || e.target.closest("[data-cpal]")) return;
+  const touch = e.pointerType !== "mouse";
+  drag = { id: el.dataset.card, el, started: false, startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, touch };
+  if (touch) drag.timer = setTimeout(() => { if (drag && !drag.started) startDrag(e.clientX, e.clientY); }, 350);
 });
-document.addEventListener("dragend", e => { justDragged = Date.now(); e.target.closest?.(".card, .mini")?.classList.remove("dragging"); document.querySelectorAll(".column.drop").forEach(x => x.classList.remove("drop")); drag = null; });
-document.addEventListener("dragover", e => {
-  const col = e.target.closest?.(".column"); if (!col || !drag) return;
+function startDrag(x, y) {
+  const el = drag.el, r = el.getBoundingClientRect();
+  drag.started = true; drag.dx = x - r.left; drag.dy = y - r.top;
+  const ghost = el.cloneNode(true); ghost.classList.add("drag-ghost");
+  Object.assign(ghost.style, { width: r.width + "px", height: r.height + "px", left: r.left + "px", top: r.top + "px" });
+  document.body.appendChild(ghost); drag.ghost = ghost;
+  const ph = document.createElement("div"); ph.className = "drop-ph"; ph.style.height = r.height + "px";
+  el.after(ph); drag.ph = ph;
+  el.classList.add("dragging");
+  document.body.classList.add("is-dragging");
+  if (navigator.vibrate && drag.touch) navigator.vibrate(10);
+}
+function dropTarget(x, y) {
+  const under = document.elementsFromPoint(x, y).find(n => !n.closest?.(".drag-ghost"));
+  if (!under) return null;
+  const tab = under.closest?.("[data-coltab]"); if (tab) return { tab };
+  const col = under.closest?.(".column[data-col], .rgroup[data-col]"); return col ? { col } : null;
+}
+document.addEventListener("pointermove", e => {
+  if (!drag || e.pointerId !== drag.pointerId) return;
+  if (!drag.started) {
+    const moved = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+    if (drag.touch) { if (moved > 8) { clearTimeout(drag.timer); drag = null; } return; } // палец поехал — это прокрутка
+    if (moved < 6) return;
+    startDrag(e.clientX, e.clientY);
+  }
   e.preventDefault();
-  document.querySelectorAll(".column.drop").forEach(x => x !== col && x.classList.remove("drop"));
-  col.classList.add("drop");
-});
-document.addEventListener("drop", e => {
-  const col = e.target.closest?.(".column"); if (!col || !drag) return;
-  e.preventDefault();
-  const before = [...col.querySelectorAll(".card:not(.dragging), .mini:not(.dragging)")].find(el => { const r = el.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
-  moveCard(current, drag, col.dataset.col, before?.dataset.card);
-});
+  drag.ghost.style.left = e.clientX - drag.dx + "px"; drag.ghost.style.top = e.clientY - drag.dy + "px";
+  document.querySelectorAll(".drop, .tab-drop").forEach(n => n.classList.remove("drop", "tab-drop"));
+  // На телефоне вкладки колонок прокручиваются, если вести карточку к их краю.
+  const tabs = $("#coltabs");
+  if (tabs && !tabs.hidden) { const r = tabs.getBoundingClientRect(); if (e.clientY > r.top - 20 && e.clientY < r.bottom + 20) { if (e.clientX > innerWidth - 48) tabs.scrollLeft += 10; else if (e.clientX < 48) tabs.scrollLeft -= 10; } }
+  const t = dropTarget(e.clientX, e.clientY);
+  if (t?.tab) { t.tab.classList.add("tab-drop"); drag.target = t; return; }
+  if (!t?.col) { drag.target = null; return; }
+  drag.target = t; t.col.classList.add("drop");
+  if (t.col.classList.contains("collapsed")) return; // свёрнутый архив: просто бросить внутрь
+  const before = itemsIn(t.col).find(n => { const r = n.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+  const list = LIST_OF(t.col);
+  if (before) list.insertBefore(drag.ph, before);
+  else { const more = list.querySelector(":scope > .more, :scope > .col-empty"); more ? list.insertBefore(drag.ph, more) : list.appendChild(drag.ph); }
+  // у края экрана прокручиваем доску
+  const area = $("#boardArea"); if (area) { const r = area.getBoundingClientRect(); if (e.clientX > r.right - 40) area.scrollLeft += 12; else if (e.clientX < r.left + 40) area.scrollLeft -= 12; }
+}, { passive: false });
+// На телефоне, пока идёт перетаскивание, страница не должна прокручиваться.
+document.addEventListener("touchmove", e => { if (drag?.started) e.preventDefault(); }, { passive: false });
+function endDrag(e, cancel) {
+  if (!drag) return;
+  clearTimeout(drag.timer);
+  const d = drag; drag = null;
+  if (!d.started) return;
+  justDragged = Date.now();
+  document.body.classList.remove("is-dragging");
+  document.querySelectorAll(".drop, .tab-drop").forEach(n => n.classList.remove("drop", "tab-drop"));
+  d.ghost?.remove();
+  const t = d.target;
+  let col = null, beforeId;
+  if (!cancel && t?.tab) col = t.tab.dataset.coltab;
+  else if (!cancel && t?.col) {
+    col = t.col.dataset.col;
+    const next = d.ph?.nextElementSibling?.closest?.(DRAGGABLE) ? d.ph.nextElementSibling : null;
+    beforeId = next?.dataset.card;
+  }
+  d.ph?.remove(); d.el.classList.remove("dragging");
+  if (col) moveCard(current, d.id, col, beforeId);
+}
+document.addEventListener("pointerup", e => endDrag(e, false));
+document.addEventListener("pointercancel", e => endDrag(e, true));
+document.addEventListener("keydown", e => { if (e.key === "Escape" && drag?.started) endDrag(e, true); });
+// Не даём браузеру начать своё перетаскивание и открывать меню по долгому нажатию на карточке.
+document.addEventListener("dragstart", e => { if (e.target.closest?.(DRAGGABLE)) e.preventDefault(); });
+document.addEventListener("contextmenu", e => { if (drag || e.target.closest?.(DRAGGABLE) && matchMedia("(pointer: coarse)").matches) e.preventDefault(); });
 
 function openSettings() {
   const f = $("#settingsForm");
