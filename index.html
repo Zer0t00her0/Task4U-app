@@ -344,7 +344,10 @@ body.is-dragging .coltabs button { background: var(--surface); border-radius: 10
 .m-side-head svg { width: 20px; height: 20px; color: var(--ink-2); flex: none; }
 .m-side-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
 .m-side-head .m-count { margin-left: 0; }
-.m-side .compose { padding: 0 28px; flex: none; }
+.m-side .compose { padding: 0 28px; flex: none; flex-direction: row; align-items: flex-end; gap: 8px; }
+.m-side .compose textarea { flex: 1; min-width: 0; }
+.m-side .compose #cSend { width: 44px; height: 44px; padding: 0; border-radius: 50%; flex: none; }
+.m-side .compose #cSend svg { width: 20px; height: 20px; }
 .sheet-title { resize: none; field-sizing: content; min-height: 0; overflow: hidden; font-weight: 600; font-size: 28px; line-height: 1.15; letter-spacing: -0.03em; border: 2px solid transparent; border-radius: var(--r-sm); padding: 4px 8px; margin-left: -10px; background: none; width: calc(100% + 10px); color: var(--ink); }
 .sheet-title:hover, .sheet-title:focus { border-color: var(--accent); outline: none; }
 .m-meta { display: flex; flex-wrap: wrap; gap: 18px 28px; }
@@ -1051,9 +1054,9 @@ function askName(cb) {
 function initial(w) { return { claude: "C", gpt: "G", human: "Я" }[w] || (w || "?")[0].toUpperCase(); }
 function av(w, cls = "") { return `<span class="av ${whoClass(w)} ${cls}" title="${esc(whoName(w))}">${esc(initial(w))}</span>`; }
 function turnLabel(w, meta) {
-  if (w === "human") return "Мой ход";
+  if (w === "human") return "Ждёт вас";
   if (w === "none" || !w) return "Закрыто";
-  return `Ход ${whoName(w, meta)}`;
+  return `Отвечает ${whoName(w, meta)}`;
 }
 function relTime(iso) {
   const d = new Date(iso); if (isNaN(d)) return "";
@@ -1170,6 +1173,7 @@ const ICON_BOX = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" st
 const ICON_LINK = `<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 10l4-4M5 7.5L3.8 8.7a2.5 2.5 0 003.5 3.5L8.5 11M11 8.5l1.2-1.2a2.5 2.5 0 00-3.5-3.5L7.5 5"/></svg>`;
 const ICON_COLLAPSE = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4l4 4-4 4"/></svg>`;
 const ICON_USER = `<svg viewBox="0 0 18 18" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="6.5" r="3"/><path d="M3.5 15.5c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/></svg>`;
+const ICON_SEND = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 16V4M4.5 9.5L10 4l5.5 5.5"/></svg>`;
 const ICON_SEARCH = `<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M12.2 12.2L16 16"/></svg>`;
 const PAGE = 30;
 let filter = null;          // claude | gpt | human | none | null
@@ -1283,7 +1287,7 @@ function renderBoard() {
   const colDot = (col, i) => col.virtual ? "var(--ink-3)" : ["var(--human-dot)", "var(--gpt-dot)", "var(--accent)", "var(--claude-dot)"][i] || "var(--ink-3)";
 
   $("#figures").innerHTML = `<button class="flt" data-filter="all" aria-pressed="${!filter}">Все <b>${cards.length}</b></button>` +
-    [["human", "Ждут меня"], ["claude", "Claude"], ["gpt", "GPT"], ["none", "Закрыто"]].map(([w, label]) =>
+    [["human", "Ждут вас"], ["claude", "Claude"], ["gpt", "GPT"], ["none", "Закрыто"]].map(([w, label]) =>
       `<button class="flt ${whoClass(w)}" data-filter="${w}" aria-pressed="${filter === w}"><i aria-hidden="true"></i>${label} <b>${cnt(w)}</b></button>`).join("");
   $("#boardArea").style.setProperty("--cols", cols.length || 1);
   // Архив по умолчанию свёрнут в узкую полосу; раскрывается кнопкой (запоминается).
@@ -1545,13 +1549,8 @@ function renderSheet() {
             : `<p class="m-muted">Обсуждение ещё не началось. ${c.turn && !["human", "none"].includes(c.turn) ? `Первым ответит ${esc(whoName(c.turn, meta))} при следующем запуске.` : "Передай ход агенту, чтобы начать."}</p>`}
         </div>
         <div class="compose">
-          <textarea id="cMsg" rows="1" placeholder="Напишите комментарий… Ctrl+Enter — отправить"></textarea>
-          <div class="row">
-            <label>Дальше ход <select id="cNext">${turnOptions.map(w => `<option value="${w}" ${w === defaultNext ? "selected" : ""}>${esc(whoName(w, meta))}</option>`).join("")}</select></label>
-            <span class="spacer"></span>
-            <button class="btn" id="cPass">Передать ход</button>
-            <button class="btn primary" id="cSend">Отправить</button>
-          </div>
+          <textarea id="cMsg" rows="1" placeholder="Вопрос или комментарий…"></textarea>
+          <button class="btn primary" id="cSend" aria-label="Отправить">${ICON_SEND}</button>
         </div>
       </aside>
     </div>
@@ -1610,10 +1609,12 @@ function pickChanged(mine, fresh) {
   return out;
 }
 
+// Вопрос человека — сигнал агентам: ответят по очереди (первым — первый в очереди карточки, иначе Claude).
+// Ход вручную больше не передаём; агенты сами возвращают слово людям, когда нужен ответ или всё сказано.
 async function sendMessage(pass = false) {
   const c = getCard(); if (!c) return;
   const text = $("#cMsg").value.trim();
-  const next = $("#cNext").value;
+  const next = (c.queue || []).filter(Boolean)[0] || "claude";
   if (!pass && !text) { $("#cMsg").focus(); return; }
   if (!ME) { askName(() => sendMessage(pass)); return; }
   if (text && !pass) c.comments = [...(c.comments || []), { id: "m-" + rid(4), author: "human", name: ME, at: nowIso(), text }];
@@ -1624,7 +1625,7 @@ async function sendMessage(pass = false) {
     const cols = state.boards[openCard.board].meta.columns || [];
     if (cols[1] && c.column === cols[0].id) c.column = cols[1].id;
   }
-  const ok = await saveCard(c, `${c.title}: ${pass ? "ход" : "сообщение"} → ${next}`);
+  const ok = await saveCard(c, `${c.title}: сообщение`);
   // Не сохранилось — возвращаем текст в поле, чтобы не пропал.
   if (!ok && text && !pass) { const box = $("#cMsg"); if (box && !box.value) box.value = text; toast(`Сообщение не сохранилось (${$("#conn span").textContent}). Текст вернул в поле — нажми «Отправить» ещё раз.`); }
 }
@@ -1760,7 +1761,6 @@ document.addEventListener("click", async e => {
       c.archived = !c.archived;
       { const ob = openCard.board; closeSheet(); saveCard(c, c.archived ? `${c.title}: в архив` : `${c.title}: из архива`, ob); } break;
     case "cSend": sendMessage(false); break;
-    case "cPass": sendMessage(true); break;
     case "cSaveDesc": c.description = $("#cDesc").value; editing = null; await saveCard(c, `${c.title}: задача`); break;
     case "cSaveReport": c.report = $("#cReport").value; c.report_by = "human"; editing = null; await saveCard(c, `${c.title}: отчёт`); break;
     case "cSaveSetup":
