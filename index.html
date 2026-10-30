@@ -554,6 +554,20 @@ dialog.dialog::backdrop { background: var(--bg); }
 
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 50; max-width: min(520px, calc(100vw - 32px)); padding: 14px 20px; border-radius: 16px; background: var(--navy); color: var(--navy-ink); font-size: 14px; line-height: 1.4; }
 
+/* корзина на карточках */
+.trash { width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; color: inherit; opacity: 1; }
+.trash svg { width: 16px; height: 16px; }
+.trash:hover { background: var(--surface); color: var(--ink); }
+.trash.hard:hover, .trash.armed { color: var(--danger); background: var(--surface); }
+.trash.armed { width: auto; padding: 0 10px; gap: 4px; display: inline-flex; align-items: center; border-radius: 999px; font-size: 12px; }
+.card-foot .trash { margin-left: 2px; }
+.mini .trash { width: 26px; height: 26px; }
+.row-c .trash { justify-self: end; }
+@media (pointer: fine) {
+  .card .trash, .mini .trash, .row-c .trash { visibility: hidden; }
+  .card:hover .trash, .mini:hover .trash, .row-c:hover .trash, .trash:focus-visible, .trash.armed { visibility: visible; }
+}
+
 /* toolbar */
 .views { display: inline-flex; gap: 2px; padding: 4px; height: 44px; border-radius: 999px; background: var(--surface); flex: none; }
 .views button { width: 40px; height: 36px; border: 0; border-radius: 999px; background: none; color: var(--ink-3); display: grid; place-items: center; }
@@ -590,7 +604,7 @@ dialog.dialog::backdrop { background: var(--bg); }
 .rhead .add { margin-left: auto; width: 36px; height: 36px; border-radius: 11px; border: 0; background: var(--bg); color: var(--ink); display: grid; place-items: center; }
 .rhead .add:hover { background: var(--navy); color: var(--navy-ink); }
 .row-c {
-  display: grid; grid-template-columns: 14px minmax(0, 1fr) 150px 120px 110px; align-items: center; gap: 16px;
+  display: grid; grid-template-columns: 14px minmax(0, 1fr) 150px 120px 110px 30px; align-items: center; gap: 16px;
   min-height: 52px; padding: 8px 14px; border: 0; border-radius: 12px; background: none; color: var(--ink); font: inherit; text-align: left; width: 100%;
 }
 .row-c:hover { background: var(--bg); }
@@ -610,6 +624,7 @@ dialog.dialog::backdrop { background: var(--bg); }
 @media (max-width: 700px) {
   .views { order: 3; }
   .row-c { grid-template-columns: 14px minmax(0, 1fr) auto; row-gap: 4px; }
+  .row-c .trash { grid-column: 3; grid-row: 3; }
   .row-c .who { grid-column: 2; grid-row: 2; }
   .row-c .n { grid-column: 3; grid-row: 1; }
   .row-c .d { grid-column: 3; grid-row: 2; }
@@ -1346,8 +1361,34 @@ function cardHtml(c, meta) {
     <span class="card-foot">
       <span class="meta">${n ? `${n} ${plural(n, "сообщение", "сообщения", "сообщений")} · ` : ""}${relTime(c.updated)}</span>
       ${stackHtml(c.queue || [], c.turn, meta)}
+      ${trashHtml(c)}
     </span>
   </button>`;
+}
+
+// Корзина на карточке: обычная карточка уходит в архив, архивная — удаляется насовсем (по второму нажатию).
+function boardHasOwnArchive(boardId = current) { return (state.boards[boardId]?.meta.columns || []).some(c => c.id === "archive"); }
+function isArchived(c, boardId = current) { return !!c.archived || (boardHasOwnArchive(boardId) && c.column === "archive"); }
+function trashHtml(c) {
+  const arch = isArchived(c);
+  return `<span class="trash ${arch ? "hard" : ""}" data-trash="${esc(c.id)}" role="button" tabindex="0" title="${arch ? "Удалить навсегда" : "В архив"}" aria-label="${arch ? "Удалить навсегда" : "В архив"}">${ICON_TRASH}</span>`;
+}
+async function trashCard(id, el) {
+  const B = state.boards[current]; const c = B?.cards.find(x => x.id === id); if (!c) return;
+  if (!isArchived(c)) {
+    if (boardHasOwnArchive()) { const prev = c.column; c.column = "archive"; saveCard(c, `${c.title}: в архив (из ${prev})`, current); }
+    else { c.archived = true; saveCard(c, `${c.title}: в архив`, current); }
+    return;
+  }
+  if (el.dataset.armed !== "1") {
+    el.dataset.armed = "1"; el.classList.add("armed"); el.innerHTML = `${ICON_TRASH}<b>Удалить?</b>`;
+    setTimeout(() => { if (el.isConnected) { el.dataset.armed = ""; el.classList.remove("armed"); el.innerHTML = ICON_TRASH; } }, 4000);
+    return;
+  }
+  busy = true; setConn("Удаляю…");
+  try { await backend.remove(`data/${current}/cards/${c.id}.json`, `удалена карточка «${c.title}»`); B.cards = B.cards.filter(x => x.id !== id); setConn("Удалено", "ok"); }
+  catch (err) { setConn(err.message, "err"); }
+  busy = false; render(); reload(true);
 }
 
 function newBadge(c, cls) {
@@ -1361,6 +1402,7 @@ function miniHtml(c, meta) {
     <span class="ic" aria-hidden="true">${esc(c.turn === "none" || !c.turn ? "✓" : initial(c.turn))}</span>
     <span class="t">${esc(c.title)}</span>
     ${newBadge(c, "nb") || (n ? `<span class="n">${ICON_CHAT}${n}</span>` : "")}
+    ${trashHtml(c)}
   </button>`;
 }
 // Строка списка.
@@ -1372,6 +1414,7 @@ function rowHtml(c, meta) {
     <span class="who"><i aria-hidden="true"></i>${esc(turnLabel(c.turn, meta))}</span>
     <span class="n">${newBadge(c, "nb")}${n ? `${n} сообщ.` : ""}</span>
     <span class="d">${relTime(c.updated)}</span>
+    ${trashHtml(c)}
   </button>`;
 }
 
@@ -1462,7 +1505,7 @@ function renderSheet() {
             <button class="round" id="cMenuBtn" aria-label="Действия с карточкой" aria-haspopup="menu" aria-expanded="false">${ICON_DOTS}</button>
             <div class="menu" id="cMenu" role="menu" hidden>
               <button class="menu-item" id="cArchive" role="menuitem">${ICON_BOX}<span>${c.archived ? "Вернуть из архива" : "В архив"}</span></button>
-              <button class="menu-item danger" id="cDeleteTop" role="menuitem">${ICON_TRASH}<span>Удалить карточку</span></button>
+              ${c.archived ? `<button class="menu-item danger" id="cDeleteTop" role="menuitem">${ICON_TRASH}<span>Удалить навсегда</span></button>` : ""}
             </div>
           </div>
           <button class="round" id="closeSheet" aria-label="Закрыть карточку">${ICON_BACK}</button>
@@ -1641,12 +1684,14 @@ document.addEventListener("click", e => {
   if (pal) { e.preventDefault(); e.stopImmediatePropagation(); const p = $("#palPop"); if (p && !p.hidden && p.dataset.cid === pal.dataset.cpal) hidePal(); else showPal(pal); return; }
   if (!e.target.closest("#palPop")) hidePal();
 }, true);
-document.addEventListener("keydown", e => { if (e.key === "Escape") hidePal(); if ((e.key === "Enter" || e.key === " ") && e.target.dataset?.cpal) { e.preventDefault(); showPal(e.target); } });
+document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.dataset?.trash) { e.preventDefault(); trashCard(e.target.dataset.trash, e.target); return; } if (e.key === "Escape") hidePal(); if ((e.key === "Enter" || e.key === " ") && e.target.dataset?.cpal) { e.preventDefault(); showPal(e.target); } });
 window.addEventListener("scroll", hidePal, true);
 $("#sheet").addEventListener("click", e => { if (e.target.id === "sheet") closeSheet(); });
 document.addEventListener("click", async e => {
   const tm = $("#topMenu");
   if (tm && !tm.hidden && !e.target.closest("#topMenu, #topMenuBtn")) { tm.hidden = true; $("#topMenuBtn")?.setAttribute("aria-expanded", "false"); }
+  const tr = e.target.closest("[data-trash]");
+  if (tr) { e.preventDefault(); e.stopPropagation(); trashCard(tr.dataset.trash, tr); return; }
   const t = e.target.closest("button"); if (!t) return;
   if (t.id === "topMenuBtn") { tm.hidden = !tm.hidden; t.setAttribute("aria-expanded", String(!tm.hidden)); return; }
   if (t.id === "settingsBtn" && tm) tm.hidden = true;
@@ -1771,7 +1816,7 @@ const itemsIn = col => [...LIST_OF(col).querySelectorAll(DRAGGABLE)].filter(el =
 
 document.addEventListener("pointerdown", e => {
   if (e.button !== 0 || drag) return;
-  const el = e.target.closest(DRAGGABLE); if (!el || e.target.closest("[data-cpal]")) return;
+  const el = e.target.closest(DRAGGABLE); if (!el || e.target.closest("[data-cpal], [data-trash]")) return;
   const touch = e.pointerType !== "mouse";
   drag = { id: el.dataset.card, el, started: false, startX: e.clientX, startY: e.clientY, pointerId: e.pointerId, touch };
   if (touch) drag.timer = setTimeout(() => { if (drag && !drag.started) startDrag(e.clientX, e.clientY); }, 350);
