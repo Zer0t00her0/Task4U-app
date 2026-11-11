@@ -286,7 +286,8 @@ body.is-dragging .coltabs button { background: var(--surface); border-radius: 10
 .card-top .ic { width: 36px; height: 36px; border-radius: 50%; background: var(--surface); color: var(--ink); display: grid; place-items: center; font-weight: 600; font-size: 14px; flex: none; }
 .card .title { padding-right: 8px; font-size: 20px; font-weight: 500; line-height: 1.15; letter-spacing: -0.025em; }
 .card-foot { display: flex; align-items: center; gap: 8px; }
-.card-foot .meta { font-size: 13px; color: inherit; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-foot .meta { font-size: 13px; color: inherit; min-width: 0; display: flex; flex-wrap: wrap; column-gap: 8px; row-gap: 2px; }
+.card-foot .meta > span { white-space: nowrap; }
 .labels { display: flex; gap: 6px; flex-wrap: wrap; }
 .label { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 999px; background: var(--surface); color: var(--ink); }
 
@@ -1069,6 +1070,17 @@ function relTime(iso) {
   if (h < 24) return `${h} ч назад`;
   return d.toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }
+// Дата, когда карточка появилась на доске (поле created), — не меняется при переносах между колонками.
+function addedIso(c) { return c.created || c.updated || ""; }
+function addedDate(c) {
+  const d = new Date(addedIso(c)); if (isNaN(d)) return "";
+  const o = { day: "2-digit", month: "2-digit" }; if (d.getFullYear() !== new Date().getFullYear()) o.year = "2-digit";
+  return d.toLocaleDateString("ru-RU", o);
+}
+function addedFull(c) {
+  const d = new Date(addedIso(c)); if (isNaN(d)) return "";
+  return d.toLocaleString("ru-RU", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
 function plural(n, a, b, c) { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c; }
 function setConn(text, kind = "") {
   const el = $("#conn"); el.className = "conn " + kind; el.querySelector("span").textContent = text;
@@ -1393,7 +1405,7 @@ function cardHtml(c, meta) {
     <span class="title">${esc(c.title)}</span>
     ${c.labels?.length ? `<span class="labels">${c.labels.map(l => `<span class="label">${esc(l)}</span>`).join("")}</span>` : ""}
     <span class="card-foot">
-      <span class="meta">${n ? `${n} ${plural(n, "сообщение", "сообщения", "сообщений")} · ` : ""}${relTime(c.updated)}</span>
+      <span class="meta" title="Добавлена ${esc(addedFull(c))} · изменена ${esc(relTime(c.updated))}">${addedDate(c) ? `<span class="dt">📅 ${esc(addedDate(c))}</span>` : ""}${n ? `<span>${n} ${plural(n, "сообщение", "сообщения", "сообщений")}</span>` : ""}</span>
       ${stackHtml(c.queue || [], c.turn, meta)}
       ${trashHtml(c)}
     </span>
@@ -1432,7 +1444,7 @@ function newBadge(c, cls) {
 // Компактная карточка: одна строка, одинаковой высоты, без выреза и подвала.
 function miniHtml(c, meta) {
   const n = (c.comments || []).length;
-  return `<button class="mini ${whoClass(c.turn)}" ${colorStyle(c)} data-card="${esc(c.id)}" title="${esc(c.title)} · ${esc(turnLabel(c.turn, meta))}">
+  return `<button class="mini ${whoClass(c.turn)}" ${colorStyle(c)} data-card="${esc(c.id)}" title="${esc(c.title)} · ${esc(turnLabel(c.turn, meta))} · добавлена ${esc(addedDate(c))}">
     <span class="ic" aria-hidden="true">${esc(c.turn === "none" || !c.turn ? "✓" : initial(c.turn))}</span>
     <span class="t">${esc(c.title)}</span>
     ${newBadge(c, "nb") || (n ? `<span class="n">${ICON_CHAT}${n}</span>` : "")}
@@ -1447,7 +1459,7 @@ function rowHtml(c, meta) {
     <span class="t"><span class="tt">${esc(c.title)}</span>${c.labels?.length ? `<span class="labels">${c.labels.map(l => `<span class="label">${esc(l)}</span>`).join("")}</span>` : ""}</span>
     <span class="who"><i aria-hidden="true"></i>${esc(turnLabel(c.turn, meta))}</span>
     <span class="n">${newBadge(c, "nb")}${n ? `${n} сообщ.` : ""}</span>
-    <span class="d">${relTime(c.updated)}</span>
+    <span class="d" title="Добавлена ${esc(addedFull(c))} · изменена ${esc(relTime(c.updated))}">📅 ${esc(addedDate(c))}</span>
     ${trashHtml(c)}
   </button>`;
 }
@@ -1506,6 +1518,7 @@ function renderSheet() {
           <button class="round m-close-mobile" data-closesheet="1" aria-label="Назад к доске">${ICON_LEFT}</button></div>
         <textarea class="sheet-title" id="cTitle" rows="1" aria-label="Название карточки">${esc(c.title)}</textarea>
         <div class="m-meta">
+          ${addedFull(c) ? `<div><span class="k">Добавлена</span><span class="chip">${esc(addedFull(c))}</span></div>` : ""}
           <div><span class="k">Статус</span><span class="chip turn ${whoClass(c.turn)}">${esc(turnLabel(c.turn, meta))}</span></div>
           <div><span class="k">Участники</span>${stackHtml(queue, c.turn, meta)}</div>
           ${maxReplies(c) && !["human", "none"].includes(c.turn) ? `<div><span class="k">Агенты ответят</span><span class="chip">${progressHtml(c)}</span></div>` : ""}
