@@ -822,6 +822,12 @@ dialog.dialog::backdrop { background: var(--bg); }
 
 <script>
 "use strict";
+// Совместимость со старыми iPhone/Safari (iOS < 15.4): нет structuredClone и Array.prototype.at.
+if (typeof structuredClone !== "function") window.structuredClone = v => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
+if (!Array.prototype.at) Object.defineProperty(Array.prototype, "at", { value(n) { n = Math.trunc(n) || 0; if (n < 0) n += this.length; return this[n]; }, configurable: true, writable: true });
+// Любая непойманная ошибка — заметно на экране, чтобы было что прислать.
+window.addEventListener("error", e => { try { toast("Ошибка: " + (e.message || e.error)); } catch {} });
+window.addEventListener("unhandledrejection", e => { try { toast("Ошибка: " + (e.reason?.message || e.reason)); } catch {} });
 const PREVIEW = false;
 /* ------------------------------------------------------------------ storage */
 const SKEY = "ochered.settings";
@@ -1051,7 +1057,12 @@ const LEGACY_HUMAN = "Роман";
 const humanName = m => m.name || LEGACY_HUMAN;
 function msgWho(m, meta) { return m.author === "human" ? humanName(m) : whoName(m.author, meta); }
 function askName(cb) {
-  const d = $("#meDlg"); $("#meName").value = ME || ""; d.showModal(); setTimeout(() => $("#meName").focus(), 0);
+  const d = $("#meDlg");
+  if (typeof d.showModal !== "function") { // старые браузеры без <dialog>
+    const v = (prompt("Как вас подписывать? Имя появится над вашими сообщениями.", ME || "") || "").trim();
+    if (v) { ME = v; store.set(MEKEY, v); render(); cb && cb(); }
+    return;
+  } $("#meName").value = ME || ""; d.showModal(); setTimeout(() => $("#meName").focus(), 0);
   d.onclose = () => { if (d.returnValue === "ok") { const v = $("#meName").value.trim(); if (v) { ME = v; store.set(MEKEY, v); render(); cb && cb(); } } };
 }
 function initial(w) { return { claude: "C", gpt: "G", human: "Я" }[w] || (w || "?")[0].toUpperCase(); }
